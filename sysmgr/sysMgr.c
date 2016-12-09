@@ -500,7 +500,7 @@ static void _sysEventHandler(const char *owner, IARM_EventId_t eventId, void *da
 			  systemStates.stb_serial_no.error =error;
 			  strncpy(systemStates.stb_serial_no.payload,payload,strlen(payload));
 			  systemStates.stb_serial_no.payload[strlen(payload)]='\0';
-			  printf("systemStates.ecm.mac.payload=%s\n",systemStates.stb_serial_no.payload);
+			  printf("systemStates.stb.serial.payload=%s\n",systemStates.stb_serial_no.payload);
 			  break;
 			case   IARM_BUS_SYSMGR_SYSSTATE_BOOTUP :				
 				systemStates.bootup.state = state;
