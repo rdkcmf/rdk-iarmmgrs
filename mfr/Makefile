@@ -23,7 +23,7 @@ CFLAGS      := -g -fPIC -D_REENTRANT -Wall
 LIBNAME     := MAF
 LIBNAMEFULL := lib$(LIBNAME).so
 CPPLAGS     := -g -fPIC -D_REENTRANT -Wall
-executable  := mfrMgrMain
+EXECUTABLE  := mfrMgrMain
 
 #Plase make setting NEXUS_APP_INCLUDE_PATHS configuratble
 ifeq ($(RDK_PLATFORM_SOC), broadcom)
@@ -104,15 +104,15 @@ ifeq ($(COMCAST_PLATFORM), XI4)
 endif
 
 executable: mfrMgrMain.o mfrMgr.o
-	@echo "Building $(executable) ...."
+	@echo "Building $(EXECUTABLE) ...."
 ifeq ($(RDK_PLATFORM_SOC), broadcom)
-	$(CC) $(CFLAGS) $(LDFLAGS) mfrMgr.o mfrMgrMain.o -o $(executable) 
+	$(CC) $(CFLAGS) $(LDFLAGS) mfrMgr.o mfrMgrMain.o -o $(EXECUTABLE) 
 endif	
 ifeq ($(RDK_PLATFORM_SOC), rpi)
-	$(CC) $(CFLAGS) $(LDFLAGS) mfrMgr.o mfrMgrMain.o -o $(executable) 
+	$(CC) $(CFLAGS) $(LDFLAGS) mfrMgr.o mfrMgrMain.o -o $(EXECUTABLE) 
 endif	
 ifeq ($(COMCAST_PLATFORM), XI4)
-	$(CC) $(CFLAGS) $(LDFLAGS) mfrMgr.o mfrMgrMain.o -o $(executable) 
+	$(CC) $(CFLAGS) $(LDFLAGS) mfrMgr.o mfrMgrMain.o -o $(EXECUTABLE) 
 endif	
 
 %.o: %.c
