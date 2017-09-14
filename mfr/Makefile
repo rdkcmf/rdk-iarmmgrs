@@ -96,6 +96,9 @@ library: mfrMgr.o
 ifeq ($(RDK_PLATFORM_SOC), broadcom)
 	$(CC) $(CFLAGS) $(LDFLAGS) -shared mfrMgr.o -o $(LIBNAMEFULL) 
 endif
+ifeq ($(RDK_PLATFORM_SOC), rpi)
+	$(CC) $(CFLAGS) $(LDFLAGS) -shared mfrMgr.o -o $(LIBNAMEFULL) 
+endif
 ifeq ($(COMCAST_PLATFORM), XI4)
 	$(CC) $(CFLAGS) $(LDFLAGS) -shared mfrMgr.o -o $(LIBNAMEFULL) 
 endif
@@ -105,6 +108,9 @@ executable: mfrMgrMain.o mfrMgr.o
 ifeq ($(RDK_PLATFORM_SOC), broadcom)
 	$(CC) $(CFLAGS) $(LDFLAGS) mfrMgr.o mfrMgrMain.o -o $(executable) 
 endif	
+ifeq ($(RDK_PLATFORM_SOC), rpi)
+	$(CC) $(CFLAGS) $(LDFLAGS) mfrMgr.o mfrMgrMain.o -o $(executable) 
+endif	
 ifeq ($(COMCAST_PLATFORM), XI4)
 	$(CC) $(CFLAGS) $(LDFLAGS) mfrMgr.o mfrMgrMain.o -o $(executable) 
 endif	
@@ -112,6 +118,9 @@ endif
 %.o: %.c
 	@echo "Building $@ ...."
 ifeq ($(RDK_PLATFORM_SOC), broadcom)
+	$(CC) -c $<  $(CFLAGS) -o $@
+endif
+ifeq ($(RDK_PLATFORM_SOC), rpi)
 	$(CC) -c $<  $(CFLAGS) -o $@
 endif
 ifeq ($(COMCAST_PLATFORM), XI4)
