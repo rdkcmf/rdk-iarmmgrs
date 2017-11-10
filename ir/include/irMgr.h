@@ -90,11 +90,23 @@
  *
  * @par IARM Publisher and Listeners Concept
  * @image html iarm-publisher.png
+ *
+ * @defgroup IARM_MGR_RPC Events and Remote Procedure Calls
+ * IARM-Bus is a platform agnostic Inter-process communication (IPC) interface. It allows
+ * applications to communicate with each other by sending Events or invoking Remote
+ * Procedure Calls. The common programming APIs offered by the RDK IARM-Bus interface is
+ * independent of the operating system or the underlying IPC mechanism.
+ *
+ * Two applications connected to the same instance of IARM-Bus are able to exchange events
+ * or RPC calls. On a typical system, only one instance of IARM-Bus instance is needed. If
+ * desired, it is possible to have multiple IARM-Bus instances. However, applications
+ * connected to different buses will not be able to communicate with each other.
+ * @ingroup IARM_MGR
  */
 
 /**
  * @defgroup IARMBUS_IR_MGR IR Manager
- * @ingroup IARM_MGR
+ * @ingroup IARM_MGR_RPC
  *
  * IR Manager is an application that publishes Remote Key events to other applications.
  * This manager receives IR signals from driver and dispatch it to all registered listeners on IARM Bus.

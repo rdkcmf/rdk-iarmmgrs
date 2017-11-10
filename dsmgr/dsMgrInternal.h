@@ -23,7 +23,7 @@
  * @file dsMgrInternal.h
  *
  * @defgroup IARMBUS_DS_MGR DS Manager
- * @ingroup IARM_MGR
+ * @ingroup IARM_MGR_RPC
  *
  * DS (Device Settings) Manager is responsible for managing the following operations,
  * - Audio Output Ports (Volume, Mute, etc.)

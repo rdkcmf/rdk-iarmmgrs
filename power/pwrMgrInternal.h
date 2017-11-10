@@ -21,7 +21,7 @@
  * @file pwrMgrInternal.h
  *
  * @defgroup IARMBUS_POWER_MGR Power Manager
- * @ingroup IARM_MGR
+ * @ingroup IARM_MGR_RPC
  *
  * Power Manager monitors Power key events and reacts to power state changes. It dispatches Power Mode Change events to IARM-Bus.
  *

@@ -17,42 +17,22 @@
  * limitations under the License.
 */
 
- /**
- * @file
+/**
+ * @defgroup IARMMGR_HAL HAL Types and Public API
+ * Described herein are the IARM-Bus HAL types and functions that are part of the Power
+ * Manager, Deep Sleep Manager and IR Manager applications.
+ * @ingroup IARM_MGR
  *
- * @brief IARM-Bus Power Manager Public API.
- *
- * This API defines the structures and functions for the 
- * IARM-Bus Power Manager interface.
- *
- * @par Document
- * Document reference.
- *
- * @par Open Issues (in no particular order)
- * -# None
- *
- * @par Assumptions
- * -# None
- *
- * @par Abbreviations
- * - BE:      Big-Endian.
- * - cb:      Callback function (suffix).
- * - DS:      Device Settings.
- * - FPD:     Front-Panel Display.
- * - HAL:     Hardware Abstraction Layer.
- * - LE:      Little-Endian.
- * - LS:      Least Significant.
- * - MBZ:     Must be zero.
- * - MS:      Most Significant.
- * - RDK:     Reference Design Kit.
- * - _t:      Type (suffix).
- *
- * @par Implementation Notes
- * -# None
- *
+ * @defgroup IARM_DEEPSLEEP_MGR_API Deep Sleep Manager (HAL Types and Public API)
+ * Deep sleep is a power saving mode which turns off STB subsystems such as A/V, HDMI, front panels, HDD etc.
+ * Provides API defines the structures and functions for the IARM-Bus Deep Sleep Manager interface.
+ * - The main purpose is to bring down the power consumption to about 15% of the actual usage.
+ * - It can also be triggered in other scenarios such as thermal shutdown in case of the temperature
+ * is above threshold for certain period.
+ * - When the STB goes in a normal power saving mode, it may be woken up for scheduled maintenance in
+ * a predetermined time.
+ * @ingroup IARMMGR_HAL
  */
- 
-
 
 /**
 * @defgroup iarmmgrs
@@ -68,16 +48,9 @@
 #include "libIARM.h"
 #include "libIBusDaemon.h"
 
-/** @addtogroup IARM_BUS_PWRMGR_API IARM-Bus Power Manager API.
- *  @ingroup IARM_BUS
- *
- *  Described herein are the IARM-Bus types and functions that are part of the Power
- *  Manager application. This manager monitors Power IR key events and reacts to power
- *  state changes based on Comcast RDK Power Management Specification. It dispatches
- *  Power Mode Change events to IARM-Bus. All listeners should releases resources when
- *  entering POWER OFF/STANDBY state and re-acquire them when entering POWER ON state.
- *
- *  @{
+/**
+ * @addtogroup IARM_DEEPSLEEP_MGR_API
+ * @{
  */
 
 #ifdef __cplusplus
@@ -90,26 +63,24 @@ extern "C"
 /*
  * Declare RPC API names and their arguments
  */
-
 #ifdef ENABLE_DEEP_SLEEP
+
 /**
- * @brief Initialize the underlying Deep Sleep Management module.
+ * @brief This API Initializes the underlying Deep Sleep Management module.
  *
- * This function must initialize all aspects of the CPE's Power Management module.
- *
- * @param None.
- * @return    Return Code.
- * @retval    0 if successful.
+ * @return    Returns the status of the operation.
+ * @retval    0 if successful, appropiate error code otherwise.
  */
 int PLAT_DS_INIT(void);
 
 /**
- * @brief Enter Deep Sleep Mode.
+ * @brief This API is used to enter the CPE into Deep Sleep Mode.
  *
  * This function sets the CPE's Power State to Deep Sleep.
  *
- * @param [in]  None.
- * @return    None.
+ * @param [in] deep_sleep_timeout  The deep sleep wakeup timeout.
+ *
+ * @return  Return the status of the operation
  */
 #ifdef ENABLE_DEEPSLEEP_WAKEUP_EVT
 bool PLAT_DS_SetDeepSleep(uint32_t deep_sleep_timeout);
@@ -118,52 +89,38 @@ void PLAT_DS_SetDeepSleep(uint32_t deep_sleep_timeout);
 #endif
 
 /**
- * @brief Get the CPE Power State.
- *
- * This function returns the current power state of the CPE.
- *
- * @param [in]  None
- * @return    None
+ * @brief This function wakes up the CPE from deep sleep mode.
  */
 void PLAT_DS_DeepSleepWakeup(void);
 
-
 /**
- * @brief Close the Deep Sleep manager.
+ * @brief This function terminates the Deep Sleep manager.
  *
  * This function must terminate the CPE Deep Sleep Management module. It must reset any data
- * structures used within Power Management module and release any Power Management
+ * structures used within Deep Sleep Management module and release any Deep Sleep Management
  * specific handles and resources.
- *
- * @param None.
- * @return None.
  */
 void PLAT_DS_TERM(void);
 
-#define IARM_BUS_DEEPSLEEPMGR_API_SetDeepSleepTimer		"SetDeepSleepTimer" /*!< Sets the timer for deep sleep ,timer is set explicitly by client of deep sleep manager,
-																		 then the STB will accept the timer value, and go to sleep when sleep timer is expired.*/
+/** Sets the timer for deep sleep ,timer is set explicitly by client of deep sleep manager, 
+ * then the STB will accept the timer value, and go to sleep when sleep timer is expired.
+ */
+#define IARM_BUS_DEEPSLEEPMGR_API_SetDeepSleepTimer		"SetDeepSleepTimer" 
 
+/**
+ * @brief Structure which holds the Deep sleep manager timeout.
+ */
 typedef struct _IARM_Bus_DeepSleepMgr_SetDeepSleepTimer_Param_t {
 	unsigned int timeout;        /*!< Timeout for deep sleep in seconds*/ 
 } IARM_Bus_DeepSleepMgr_SetDeepSleepTimer_Param_t;
 
-/* End of IARM_BUS_PWRMGR_HAL_API doxygen group */
-/**
- * @}
- */
+/** @} */ //End of Doxygen tag
 #endif
 
 #ifdef __cplusplus
 }
 #endif
 #endif
-
-/* End of IARM_BUS_PWRMGR_API doxygen group */
-/**
- * @}
- */
-
-
 
 /** @} */
 /** @} */
