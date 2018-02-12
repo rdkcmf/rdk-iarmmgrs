@@ -34,6 +34,7 @@ extern "C" {
 #include <stdio.h>
 #include <string.h>
 #include "plat_ir.h"
+#include "libIBus.h"
 #ifdef __cplusplus 
 }
 #endif
@@ -131,6 +132,14 @@ int main(int argc, char *argv[])
               "STATUS=IRMgr is Successfully Initialized\n"
               "MAINPID=%lu", (unsigned long) getpid());
     #endif
+
+#ifdef PID_FILE_PATH
+#define xstr(s) str(s)
+#define str(s) #s
+    // write pidfile because sd_notify() does not work inside container
+    IARM_Bus_WritePIDFile(xstr(PID_FILE_PATH) "/irmgr.pid");
+#endif
+
     IRMgr_Loop();
     IRMgr_Stop();
 

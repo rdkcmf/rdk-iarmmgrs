@@ -36,6 +36,7 @@ extern "C" {
 #include <stdio.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include "libIBus.h"
 #ifdef __cplusplus 
 }
 #endif
@@ -71,7 +72,6 @@ void dslogCallback(int priority,const char *buff)
 } 
   
 #endif
-
 
 int main(int argc, char *argv[])
 {
@@ -113,6 +113,13 @@ int main(int argc, char *argv[])
            "STATUS=DsMgr is Successfully Initialized\n"
               "MAINPID=%lu", (unsigned long) getpid());
     #endif
+
+#ifdef PID_FILE_PATH
+#define xstr(s) str(s)
+#define str(s) #s
+    // write pidfile because sd_notify() does not work inside container
+    IARM_Bus_WritePIDFile(xstr(PID_FILE_PATH) "/dsmgr.pid");
+#endif
     DSMgr_Loop();
     DSMgr_Stop();
     return 0;

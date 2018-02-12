@@ -102,6 +102,14 @@ IARM_Result_t SYSMgr_Start()
               "MAINPID=%lu",
               (unsigned long) getpid());
         #endif
+
+#ifdef PID_FILE_PATH
+#define xstr(s) str(s)
+#define str(s) #s
+    // write pidfile because sd_notify() does not work inside container
+    IARM_Bus_WritePIDFile(xstr(PID_FILE_PATH) "/sysmgr.pid");
+#endif
+        
       //  LOG("I-ARM Sys Mgr: %d\r\n", __LINE__);
 
 		/*HDCP Profile required for RNG 150*/	
