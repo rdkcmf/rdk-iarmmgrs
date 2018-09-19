@@ -18,7 +18,7 @@
 ##########################################################################
 [Unit]
 Description=IARM Mgr Daemon MFR MGR
-After=iarmbusd.service
+After=iarmbusd.service mfrlibapp.service
 
 [Service]
 Type=notify
