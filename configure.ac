@@ -98,7 +98,6 @@ AC_CONFIG_FILES([Makefile
                  ir/Makefile
                  power/Makefile
                  deepsleepmgr/Makefile
-                 tr69Bus/Makefile
                  test/Makefile
                  vrexmgr/Makefile
                  mfr/Makefile])

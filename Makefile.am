@@ -18,8 +18,8 @@
 ##########################################################################
 #
 
-SUBDIRS = dsmgr sysmgr disk deviceUpdateMgr tr69Bus ir power deepsleepmgr test vrexmgr $(SUBDIR_MFR)
-DIST_SUBDIRS = dsmgr sysmgr disk deviceUpdateMgr tr69Bus ir power deepsleepmgr test vrexmgr $(SUBDIR_MFR)
+SUBDIRS = dsmgr sysmgr disk deviceUpdateMgr ir power deepsleepmgr test vrexmgr $(SUBDIR_MFR)
+DIST_SUBDIRS = dsmgr sysmgr disk deviceUpdateMgr ir power deepsleepmgr test vrexmgr $(SUBDIR_MFR)
 
 IPK_GEN_PATH = $(abs_top_builddir)/ipk
 IPK_GEN_STAGING_DIR=$(abs_top_builddir)/staging_dir
@@ -38,7 +38,6 @@ package_ipk:
 	cp -rf $(IPK_GEN_STAGING_DIR)/bin/deepSleepMgrMain $(IPK_GEN_STAGING_DIR)/usr/bin/
 	!(test -s $(IPK_GEN_STAGING_DIR)/bin/mfrMgrMain) || cp -rf $(IPK_GEN_STAGING_DIR)/bin/mfrMgrMain $(IPK_GEN_STAGING_DIR)/usr/bin/
 	cp -rf $(IPK_GEN_STAGING_DIR)/bin/diskMgrMain $(IPK_GEN_STAGING_DIR)/usr/bin/
-	cp -rf $(IPK_GEN_STAGING_DIR)/bin/tr69BusMain $(IPK_GEN_STAGING_DIR)/usr/bin/
 	cp -rf $(IPK_GEN_STAGING_DIR)/bin/dsMgrMain $(IPK_GEN_STAGING_DIR)/usr/bin/
 	cp -rf $(IPK_GEN_STAGING_DIR)/bin/vrexMgrMain $(IPK_GEN_STAGING_DIR)/usr/bin/
 	cp -rf $(IPK_GEN_STAGING_DIR)/bin/sysMgrMain $(IPK_GEN_STAGING_DIR)/usr/bin/

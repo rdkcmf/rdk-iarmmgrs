@@ -27,7 +27,6 @@ INCLUDES = -I=$(IARM) -I=$(IARM_MGR) \
            -I ../ir/include \
            -I ../power/include \
            -I=/usr/include/directfb \
-           -I ../tr69Bus/include \
            -I ../vrexmgr/include \
            -I ../sysmgr/include
 
@@ -35,15 +34,13 @@ CC = $(CXX)
 
 AM_CFLAGS = $(INCLUDES) -fPIC -D_REENTRANT -Wall -DGP_VERSION_11 $(CFLAGS_CLIENT)
 
-bin_PROGRAMS = test_bus_client test_mode_change_client test_tr69Bus_client test_pwrMgr test_vrex_client test_ir_client test_sys_client test_tr69Bus_agent
+bin_PROGRAMS = test_bus_client test_mode_change_client test_pwrMgr test_vrex_client test_ir_client test_sys_client
 
 test_bus_client_SOURCES = test_bus_client.c
 test_mode_change_client_SOURCES = test_mode_change_client.c
-test_tr69Bus_client_SOURCES = test_tr69Bus_client.c
 test_pwrMgr_SOURCES = test_pwrMgr.c
 test_vrex_client_SOURCES = test_vrex_client.c
 test_ir_client_SOURCES = test_ir_client.c
 test_sys_client_SOURCES = test_sys_client.c
-test_tr69Bus_agent_SOURCES = test_tr69Bus_agent.c
 
 AM_LDFLAGS += $(LDFLAGS_CLIENT)
