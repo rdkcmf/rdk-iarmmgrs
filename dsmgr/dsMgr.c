@@ -70,7 +70,7 @@ extern IARM_Result_t _dsIsDisplayConnected(void *arg);
 extern IARM_Result_t _dsGetStereoAuto(void *arg);
 extern IARM_Result_t _dsIsDisplaySurround(void *arg);
 extern IARM_Result_t _dsGetForceDisable4K(void *arg);
-
+extern bool isComponentPortPresent();
 extern bool dsGetHDMIDDCLineStatus(void);
 static int _SetVideoPortResolution();
 static int  _SetResolution(int* handle,dsVideoPortType_t PortType);
@@ -684,8 +684,11 @@ static void* _DSMgrResnThreadFunc(void *arg)
 			 	* Delay the setting of resolution by 5 sec. This will help to filter out un-necessary 
 			 	* resolution settings on HDMI hot plug.  
 			 */
+                     if(isComponentPortPresent())
+                     {
 			 hotplug_event_src = g_timeout_add_seconds((guint)5,_SetResolutionOnComponent,dsMgr_Gloop); 
 			__TIMESTAMP();printf("Schedule a handler to set the resolution after 5 sec for %d time src.. \r\n",hotplug_event_src);
+                     }
 		}
  
      }
