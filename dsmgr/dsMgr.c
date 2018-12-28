@@ -70,7 +70,9 @@ extern IARM_Result_t _dsIsDisplayConnected(void *arg);
 extern IARM_Result_t _dsGetStereoAuto(void *arg);
 extern IARM_Result_t _dsIsDisplaySurround(void *arg);
 extern IARM_Result_t _dsGetForceDisable4K(void *arg);
+extern IARM_Result_t _dsSetBackgroundColor(void *arg);
 extern bool isComponentPortPresent();
+
 extern bool dsGetHDMIDDCLineStatus(void);
 static int _SetVideoPortResolution();
 static int  _SetResolution(int* handle,dsVideoPortType_t PortType);
@@ -87,6 +89,7 @@ static void _setAudioMode();
 static void _setEASAudioMode();
 static int iResnCount = 5;
 static int iInitResnFlag = 0;
+static bool bHDCPAuthenticated = false;
 static dsDisplayEDID_t edidData;
 static dsDisplayGetEDIDParam_t Edidparam;
 static IARM_Bus_Daemon_SysMode_t isEAS = IARM_BUS_SYS_MODE_NORMAL; // Default is Normal Mode
@@ -97,7 +100,7 @@ static IARM_Bus_Daemon_SysMode_t isEAS = IARM_BUS_SYS_MODE_NORMAL; // Default is
 #include <glib.h>
 GMainLoop *dsMgr_Gloop = NULL;
 static gboolean heartbeatMsg(gpointer data);
-static gboolean _SetResolutionOnComponent(gpointer data);
+static gboolean _SetResolutionHandler(gpointer data);
 static guint hotplug_event_src = 0;
 
 IARM_Result_t DSMgr_Start()
@@ -116,11 +119,7 @@ IARM_Result_t DSMgr_Start()
 
 	/*Initialize the DS Manager - DS Srv and DS HAL */
 	dsMgr_init();
-	
-	
-	/*Set the Video Port Resolution On Startup*/
-	_SetVideoPortResolution();
-		
+	  
 	iInitResnFlag = 1;
 
 	/*Register the Events */
@@ -255,6 +254,26 @@ static IARM_Result_t _SysModeChange(void *arg)
     return IARM_RESULT_SUCCESS;
 }
 
+static void setBGColor(dsVideoBackgroundColor_t color)
+{
+    /* Get the HDMI Video Port Parameter */
+    dsVideoPortGetHandleParam_t vidPortParam;
+    memset(&vidPortParam, 0, sizeof(vidPortParam));
+    vidPortParam.type = dsVIDEOPORT_TYPE_HDMI;
+    vidPortParam.index = 0;
+    _dsGetVideoPort(&vidPortParam);
+    vidPortParam.handle;
+
+    if(vidPortParam.handle != NULL)
+    {
+        dsSetBackgroundColorParam_t setBGColorParam;
+        memset(&setBGColorParam, 0, sizeof(setBGColorParam));
+        setBGColorParam.color = color;
+        setBGColorParam.handle= vidPortParam.handle;
+        _dsSetBackgroundColor(&setBGColorParam);  
+    }
+}
+
 
 /*Event Handler for DS Manager And Sys Manager Events */
 static void _EventHandler(const char *owner, IARM_EventId_t eventId, void *data, size_t len)
@@ -299,6 +318,8 @@ static void _EventHandler(const char *owner, IARM_EventId_t eventId, void *data,
 					
 					__TIMESTAMP();printf("[DsMgr] Got HDMI %s Event  \r\n",(eventData->data.hdmi_hpd.event == dsDISPLAY_EVENT_CONNECTED ? "Connect" : "Disconnect"));
 
+                                        setBGColor(dsVIDEO_BGCOLOR_NONE);
+
 					/* Un-Block the Resolution Settings Thread */
 					pthread_mutex_lock(&tdsMutexLock);
 					edisplayEventStatus = ((eventData->data.hdmi_hpd.event == dsDISPLAY_EVENT_CONNECTED) ? dsDISPLAY_EVENT_CONNECTED : dsDISPLAY_EVENT_DISCONNECTED);
@@ -321,11 +342,23 @@ static void _EventHandler(const char *owner, IARM_EventId_t eventId, void *data,
 					{
 						__TIMESTAMP();printf("Changed status to HDCP Authentication Pass  !!!!!!!! ..\r\n");
 						HDCPeventData.data.systemStates.state =  1;
+                                                bHDCPAuthenticated = true;
+                                                __TIMESTAMP();printf("HDCP success - Removed hotplug_event_src Time source %d and set resolution immediately \r\n",hotplug_event_src);                                          
+                                                if(hotplug_event_src)
+                                                {
+                                                    g_source_remove(hotplug_event_src);
+                                                    hotplug_event_src = 0;
+                                                }
+                                                setBGColor(dsVIDEO_BGCOLOR_NONE);
+                                                _SetVideoPortResolution();
 					} 
 					else if (status == dsHDCP_STATUS_AUTHENTICATIONFAILURE )
 					{
 						__TIMESTAMP();printf("Changed status to HDCP Authentication Fail   !!!!!!!! ..\r\n");
 						HDCPeventData.data.systemStates.state =  0;
+                                                setBGColor(dsVIDEO_BGCOLOR_BLUE);
+                                                bHDCPAuthenticated = false;
+                                                _SetVideoPortResolution();
 					}
 
 					IARM_Bus_BroadcastEvent(IARM_BUS_SYSMGR_NAME, (IARM_EventId_t) IARM_BUS_SYSMGR_EVENT_SYSTEMSTATE, (void *)&HDCPeventData, sizeof(HDCPeventData));
@@ -675,8 +708,11 @@ static void* _DSMgrResnThreadFunc(void *arg)
 		/*Set the Resolution only on HDMI Hot plug Connect and Tune Ready events */
 		if((1 == iTuneReady) && (dsDISPLAY_EVENT_CONNECTED == edisplayEventStatus)) {
 			/*Set Video Output Port  Resolution */
-			_SetVideoPortResolution();
-			/* Set audio mode on HDMI hot plug */
+                        if(bHDCPAuthenticated)
+                        {
+                            _SetVideoPortResolution();
+			}
+                        /* Set audio mode on HDMI hot plug */
 			_setAudioMode();	
 		}/*Set the Resolution only on HDMI Hot plug - Disconnect and Tune Ready event */
 		else if((1 == iTuneReady) && (dsDISPLAY_EVENT_DISCONNECTED == edisplayEventStatus)) {
@@ -684,9 +720,10 @@ static void* _DSMgrResnThreadFunc(void *arg)
 			 	* Delay the setting of resolution by 5 sec. This will help to filter out un-necessary 
 			 	* resolution settings on HDMI hot plug.  
 			 */
+	             bHDCPAuthenticated = false;
                      if(isComponentPortPresent())
                      {
-			 hotplug_event_src = g_timeout_add_seconds((guint)5,_SetResolutionOnComponent,dsMgr_Gloop); 
+			 hotplug_event_src = g_timeout_add_seconds((guint)5,_SetResolutionHandler,dsMgr_Gloop); 
 			__TIMESTAMP();printf("Schedule a handler to set the resolution after 5 sec for %d time src.. \r\n",hotplug_event_src);
                      }
 		}
@@ -696,9 +733,9 @@ static void* _DSMgrResnThreadFunc(void *arg)
 }
 
 
-static gboolean _SetResolutionOnComponent(gpointer data)
+static gboolean _SetResolutionHandler(gpointer data)
 {
-	__TIMESTAMP();printf("Set Video Resolution on Component after delay of 5 sec.. \r\n");
+        __TIMESTAMP();printf("Set Video Resolution after delayed time .. \r\n");
 	_SetVideoPortResolution();
 	hotplug_event_src = 0;
 	return FALSE;
