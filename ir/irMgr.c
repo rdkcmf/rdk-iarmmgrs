@@ -447,6 +447,7 @@ static void _IrInputKeyEventHandler(int keyType, int keyCode , int keySrc, unsig
         case KED_VOLUME_OPTIMIZE:
         case KED_XR11_NOTIFY:
         case KED_XR15V1_NOTIFY:
+        case KED_SCREEN_BIND_NOTIFY:
             LOG("This (0x%x) is not a key press. Control event only.\n", keyCode);
         case KED_VOLUMEUP:
         case KED_VOLUMEDOWN:
