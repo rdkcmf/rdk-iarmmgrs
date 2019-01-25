@@ -130,7 +130,7 @@ static bool read_config_param 		= FALSE;
 // opt override for thermal configuration, this will be overriden by RFC file
 static char  *configProp_FilePath 	= "/opt/thermalmgr.conf";
 //RFC configuration file path
-static char *rfc_FilePath		= "/opt/RFC/.RFC_ThermalProtection.ini";
+static char *rfc_FilePath		= "/opt/secure/RFC/.RFC_ThermalProtection.ini";
 //Path where RFC file converted to glib style conf file
 static char *rfcProp_FilePath		= "/tmp/thermalmgr.conf";
 // Is feature enabled ?
@@ -581,7 +581,7 @@ static bool updateRFCStatus()
     {
         LOG("[%s:%d] RFC File is present .. filtering data to tmp file \n", __FUNCTION__, __LINE__);
         system("echo [Thermal_Config]>/tmp/thermalmgr.conf" );
-        system("grep ThermalProtection /opt/RFC/.RFC_ThermalProtection.ini | awk '{print $2}' >>/tmp/thermalmgr.conf");
+        system("grep ThermalProtection /opt/secure/RFC/.RFC_ThermalProtection.ini | awk '{print $2}' >>/tmp/thermalmgr.conf");
         result = true;
     }
     else
