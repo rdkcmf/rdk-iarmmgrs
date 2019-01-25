@@ -39,5 +39,5 @@ AM_CFLAGS = $(INCLUDES) -fPIC -D_REENTRANT -Wall -DGP_VERSION_11
 
 bin_PROGRAMS = pwrMgrMain
 
-pwrMgrMain_SOURCES = coldFactoryReset.c customerReset.c factoryReset.c  personalityReset.c pwrMgr.c pwrMgrMain.c reset.c  sleepTimer.c wareHouseReset.c pwrlogger.h pwrMgrInternal.h
+pwrMgrMain_SOURCES = iarmcec.c coldFactoryReset.c customerReset.c factoryReset.c  personalityReset.c pwrMgr.c pwrMgrMain.c reset.c  sleepTimer.c wareHouseReset.c pwrlogger.h pwrMgrInternal.h
 pwrMgrMain_LDADD = -lds -ldshalcli -liarmmgrs-power-hal

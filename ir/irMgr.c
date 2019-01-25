@@ -44,6 +44,9 @@
 #include "sysMgr.h"
 #include <pthread.h>
 #include <errno.h>
+#include "manager.hpp"
+#include "rfcapi.h"
+#include "iarmcec.h"
 
 #define MAX_KEY_REPEATS 6
 #define LAST_KEY_NUM_SECONDS 2
@@ -95,7 +98,7 @@ bool bLastTimerRunning = false;
 bool bIgnoreLastKeyup = false;
 int LASTkeySrc = IARM_BUS_IRMGR_KEYSRC_IR;
 int lastKeyNumMSecs = 1500;
-
+static bool isCecLocalLogicEnabled = false;
 
 /*Default is IR*/
 static bool bNeedRFKeyUp = false;
@@ -184,7 +187,21 @@ IARM_Result_t IRMgr_Start(int argc, char *argv[])
 
     PLAT_API_RegisterIRKeyCallback(_IrKeyCallback);
     IARM_Bus_RegisterEvent(IARM_BUS_IRMGR_EVENT_MAX);
-	
+
+     try {
+        device::Manager::Initialize();
+    }
+    catch (...){
+        LOG("Exception Caught during [device::Manager::Initialize]\r\n");
+    }
+  
+    RFC_ParamData_t rfcParam;
+    WDMP_STATUS status = getRFCParameter("TestComponent", "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.CECLocalLogic.Enable", &rfcParam);
+    if(strncasecmp(rfcParam.value, "true",4) == 0)
+    {
+        isCecLocalLogicEnabled= true;
+        LOG("RFC CEC Local Logic feature enabled \r\n");
+    }
 
     return IARM_RESULT_SUCCESS;
 }
@@ -214,6 +231,12 @@ IARM_Result_t IRMgr_Stop(void)
 #endif  // NO_RF4CE
 
     IARM_Bus_UnRegisterEventHandler(IARM_BUS_SYSMGR_NAME,IARM_BUS_SYSMGR_EVENT_KEYCODE_LOGGING_CHANGED);
+     try {
+        device::Manager::DeInitialize();
+    }
+    catch (...){
+        LOG("Exception Caught during [device::Manager::DeInitialize]\r\n");
+    }  
 
     IARM_Bus_Disconnect();
     IARM_Bus_Term();
@@ -613,6 +636,7 @@ static void _IrInputKeyEventHandler(int keyType, int keyCode , int keySrc, unsig
 		prevEventData.data.irkey.keyType = keyType;
                 prevEventData.data.irkey.keySourceId = keySrcId;
         prevEventData.data.irkey.keyCode = keyCode;
+        IARMCEC_SendCECActiveSource(isCecLocalLogicEnabled,keyType,keyCode);
         if (udispatcher){
             udispatcher(keyCode, keyType, keySrc);
         }

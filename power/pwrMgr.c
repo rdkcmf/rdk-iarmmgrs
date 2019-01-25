@@ -59,6 +59,8 @@ extern "C"
 #include "pwrlogger.h"
 #include "frontPanelIndicator.hpp"
 #include "resetModes.h"
+#include "rfcapi.h"
+#include "iarmcec.h"
 
 /* For glib APIs*/
 #include <glib.h>
@@ -127,6 +129,7 @@ typedef struct _UIMgr_Settings_t{
 
 static PWRMgr_Settings_t m_settings = {0};
 static const char *m_settingsFile = NULL;
+static bool isCecLocalLogicEnabled = false;
 
 #define MAX_NUM_VIDEO_PORTS 5
 typedef struct{
@@ -348,6 +351,13 @@ IARM_Result_t PWRMgr_Start(int argc, char *argv[])
     }
 
     IARM_Bus_PWRMGR_RegisterSleepTimerAPIs(pwrMgr_Gloop);
+    RFC_ParamData_t rfcParam;
+    WDMP_STATUS status = getRFCParameter("TestComponent", "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.CECLocalLogic.Enable", &rfcParam);
+    if(strncmp(rfcParam.value, "true",4) == 0)
+    {
+        isCecLocalLogicEnabled= true;
+        LOG("pwrMgr:RFC CEC Local Logic feature enabled \r\n");
+    }
 
 	return IARM_RESULT_SUCCESS;
 }
@@ -787,7 +797,7 @@ static IARM_Result_t _SetPowerState(void *arg)
 
 		__TIMESTAMP();LOG("Power Mode Change from %s to %s start\n",powerstateString[curState],powerstateString[newState]);
 
-        powerPreChangeParam.newState = param->newState;
+      powerPreChangeParam.newState = param->newState;
 		powerPreChangeParam.curState = pSettings->powerState;  
 
         IARM_BusDaemon_PowerPrechange(powerPreChangeParam);
@@ -877,6 +887,13 @@ static IARM_Result_t _SetPowerState(void *arg)
 
             IARM_Bus_BroadcastEvent( IARM_BUS_PWRMGR_NAME, 
             IARM_BUS_PWRMGR_EVENT_MODECHANGED, (void *)&_eventData, sizeof(_eventData));
+            if(IARM_BUS_PWRMGR_POWERSTATE_ON == newState)
+            {
+                __TIMESTAMP();LOG("IARMCEC_SendCECImageViewOn and IARMCEC_SendCECActiveSource. \r\n");
+                IARMCEC_SendCECImageViewOn(isCecLocalLogicEnabled);
+                IARMCEC_SendCECActiveSource(isCecLocalLogicEnabled,KET_KEYDOWN,KED_MENU);
+            }
+          
         }
  
     }

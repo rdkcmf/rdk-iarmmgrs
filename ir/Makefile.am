@@ -34,5 +34,5 @@ AM_CFLAGS = $(INCLUDES) -fPIC -D_REENTRANT -Wall -DGP_VERSION_11
 
 bin_PROGRAMS = irMgrMain
 
-irMgrMain_SOURCES = irMgr.c irMgrMain.c irMgrInternal.h
+irMgrMain_SOURCES = iarmcec.c irMgr.c irMgrMain.c irMgrInternal.h
 irMgrMain_LDADD = -liarmmgrs-ir-hal
