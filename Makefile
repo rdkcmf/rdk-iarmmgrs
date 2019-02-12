@@ -34,7 +34,6 @@ ifneq ($(COMCAST_PLATFORM), RNG150)
 exe_vrexmgr         := vrexmgr/
 exe_deviceupdatemgr := deviceUpdateMgr/
 endif
-exe_diskmgr         := disk/
 ifeq ($(OEM_VENDOR), SAMSUNG)
 ifeq ($(COMCAST_PLATFORM), XG2)
 exe_dsgcc           := $(MFR_PATH)/../dsgccmgr
@@ -57,12 +56,12 @@ endif
 endif
 
 ifneq ($(MFR_MGR_SUPPORT),nomfrmgr)
-executable := $(exe_platform_ir) $(exe_platform_power) $(exe_platform_fp) $(exe_ir) $(exe_power) $(exe_diskmgr) $(exe_sysmgr) $(exe_tr69Bus) $(exe_test) $(exe_mfr) $(exe_ds)
+executable := $(exe_platform_ir) $(exe_platform_power) $(exe_platform_fp) $(exe_ir) $(exe_power) $(exe_sysmgr) $(exe_tr69Bus) $(exe_test) $(exe_mfr) $(exe_ds)
 ifeq ($(COMCAST_PLATFORM), XI3)
 executable += $(exe_mfr_test)
 endif 
 else	
-executable := $(exe_platform_ir) $(exe_platform_power) $(exe_platform_fp) $(exe_ir) $(exe_power) $(exe_diskmgr) $(exe_sysmgr) $(exe_tr69Bus) $(exe_test) $(exe_ds)
+executable := $(exe_platform_ir) $(exe_platform_power) $(exe_platform_fp) $(exe_ir) $(exe_power) $(exe_sysmgr) $(exe_tr69Bus) $(exe_test) $(exe_ds)
 endif	
 
 ifneq ($(COMCAST_PLATFORM), RNG150)
@@ -109,7 +108,6 @@ endif
 	cp $(exe_deviceupdatemgr)/*Main $(install_dir)
 	cp $(exe_deviceupdatemgr)/deviceUpdateConfig.json $(install_dir)
 endif
-	cp $(exe_diskmgr)/*Main $(install_dir)
 	cp $(exe_sysmgr)/*Main $(install_dir)
 	cp $(exe_power)/*Main $(install_dir)
 ifeq ($(COMCAST_PLATFORM),XI3)
@@ -151,7 +149,6 @@ ifeq ($(OEM_VENDOR), PACE)
 endif
 endif
 ifeq ($(PLATFORM_SOC),intel)
-	cp $(exe_diskmgr)/*Main $(install_dir)
 	cp $(exe_ds)/*Main $(install_dir)
 endif
 ifeq ($(COMCAST_PLATFORM), XI4)

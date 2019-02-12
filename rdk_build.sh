@@ -317,7 +317,6 @@ function install()
 		cp -v bin/irMgrMain ${RDK_FSROOT_PATH}mnt/nfs/env
 		cp -v bin/pwrMgrMain ${RDK_FSROOT_PATH}mnt/nfs/env    
 		cp -v bin/sysMgrMain ${RDK_FSROOT_PATH}mnt/nfs/env
-		cp -v bin/diskMgrMain ${RDK_FSROOT_PATH}mnt/nfs/env
 		cp -v bin/dsMgrMain  ${RDK_FSROOT_PATH}mnt/nfs/env
 		cp -v bin/vrexPrefs.json ${RDK_FSROOT_PATH}mnt/nfs/env
 		if [ -e bin/vrexMgrMain ]; then
@@ -330,7 +329,6 @@ function install()
 	elif [ $RDK_PLATFORM_SOC = "broadcom" ]; then
 		cp -v bin/irMgrMain ${RDK_FSROOT_PATH}mnt/nfs/env
 		cp -v bin/pwrMgrMain ${RDK_FSROOT_PATH}mnt/nfs/env    
-		cp -v bin/diskMgrMain ${RDK_FSROOT_PATH}mnt/nfs/env
 		cp -v bin/sysMgrMain ${RDK_FSROOT_PATH}mnt/nfs/env
 		cp -v bin/dsMgrMain ${RDK_FSROOT_PATH}mnt/nfs/env
 		if [ ${RDK_PLATFORM_DEVICE} != "rng150" ];then
@@ -381,7 +379,6 @@ function install()
 	elif [ $RDK_PLATFORM_SOC = "entropic" ]; then
 		cp -v bin/irMgrMain ${RDK_FSROOT_PATH}mnt/nfs/env
 		cp -v bin/pwrMgrMain ${RDK_FSROOT_PATH}mnt/nfs/env    
-		cp -v bin/diskMgrMain ${RDK_FSROOT_PATH}mnt/nfs/env
 		cp -v bin/sysMgrMain ${RDK_FSROOT_PATH}mnt/nfs/env
 		cp -v bin/dsMgrMain ${RDK_FSROOT_PATH}usr/local/bin
 		cp -v bin/tr69BusMain ${RDK_FSROOT_PATH}mnt/nfs/env
