@@ -65,6 +65,7 @@ extern IARM_Result_t _dsGetAudioPort(void *arg);
 extern IARM_Result_t _dsGetStereoMode(void *arg);
 extern IARM_Result_t _dsSetStereoMode(void *arg);
 extern IARM_Result_t _dsGetEDID(void *arg);
+extern IARM_Result_t _dsGetEDIDBytes(void *arg);
 extern IARM_Result_t _dsGetVideoPort(void *arg);
 extern IARM_Result_t _dsIsDisplayConnected(void *arg);
 extern IARM_Result_t _dsGetStereoAuto(void *arg);
@@ -102,6 +103,7 @@ GMainLoop *dsMgr_Gloop = NULL;
 static gboolean heartbeatMsg(gpointer data);
 static gboolean _SetResolutionHandler(gpointer data);
 static guint hotplug_event_src = 0;
+static gboolean dumpEdidOnChecksumDiff(gpointer data);
 
 IARM_Result_t DSMgr_Start()
 {
@@ -351,6 +353,7 @@ static void _EventHandler(const char *owner, IARM_EventId_t eventId, void *data,
                                                 }
                                                 setBGColor(dsVIDEO_BGCOLOR_NONE);
                                                 _SetVideoPortResolution();
+                                                g_timeout_add_seconds((guint)1,dumpEdidOnChecksumDiff,NULL);
 					} 
 					else if (status == dsHDCP_STATUS_AUTHENTICATIONFAILURE )
 					{
@@ -359,6 +362,7 @@ static void _EventHandler(const char *owner, IARM_EventId_t eventId, void *data,
                                                 setBGColor(dsVIDEO_BGCOLOR_BLUE);
                                                 bHDCPAuthenticated = false;
                                                 _SetVideoPortResolution();
+                                                g_timeout_add_seconds((guint)1,dumpEdidOnChecksumDiff,NULL);
 					}
 
 					IARM_Bus_BroadcastEvent(IARM_BUS_SYSMGR_NAME, (IARM_EventId_t) IARM_BUS_SYSMGR_EVENT_SYSTEMSTATE, (void *)&HDCPeventData, sizeof(HDCPeventData));
@@ -901,6 +905,44 @@ static void dumpHdmiEdidInfo()
 			edidData.physicalAddressB,edidData.physicalAddressC,edidData.physicalAddressD);
 }
 
+
+static gboolean dumpEdidOnChecksumDiff(gpointer data) {
+         __TIMESTAMP();printf("dumpEdidOnChecksumDiff HDMI-EDID Dump>>>>>>>>>>>>>>\r\n");
+        int _displayHandle = 0;
+        dsGetDisplay(dsVIDEOPORT_TYPE_HDMI, 0, &_displayHandle);
+        if (_displayHandle) {
+                int length = 0;
+                dsDisplayGetEDIDBytesParam_t EdidBytesParam;
+                static int cached_EDID_checksum = 0;
+                int current_EDID_checksum = 0;
+                memset(&EdidBytesParam,0,sizeof(EdidBytesParam));
+                EdidBytesParam.handle = _displayHandle;
+                _dsGetEDIDBytes(&EdidBytesParam);
+		length = EdidBytesParam.length;
+
+		if((length > 0) && (length <= 512)) {
+                    unsigned char* edidBytes = EdidBytesParam.bytes;
+                    for (int i = 0; i < (length / 128); i++)
+                            current_EDID_checksum += edidBytes[(i+1)*128 - 1];
+
+                    if((cached_EDID_checksum == 0) || (current_EDID_checksum != cached_EDID_checksum)) {
+                            cached_EDID_checksum = current_EDID_checksum;
+                            __TIMESTAMP();printf("HDMI-EDID Dump BEGIN>>>>>>>>>>>>>>\r\n");
+                            for (int i = 0; i < length; i++) {
+                                    if (i % 16 == 0) {
+                                            printf("\r\n");
+                                    }
+                                    if (i % 128 == 0) {
+                                            printf("\r\n");
+                                    }
+                                    printf("%02X ", edidBytes[i]);
+                            }
+                            printf("\nHDMI-EDID Dump END>>>>>>>>>>>>>>\r\n");
+                    }
+		}
+        }
+        return false;
+}
 
 /** @} */
 /** @} */
