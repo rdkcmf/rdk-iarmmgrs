@@ -288,8 +288,14 @@ static IARM_Result_t _GetSystemStates(void *arg)
     GetSerialNumber();
 #endif
     pthread_mutex_lock(&tMutexLock);
+    static int current_channel_map_state = 0;
     IARM_Bus_SYSMgr_GetSystemStates_Param_t *param = (IARM_Bus_SYSMgr_GetSystemStates_Param_t *)arg;
-    __TIMESTAMP();LOG("_GetSystemStates return ChannelMapState = %d\r\n", systemStates.channel_map);
+
+    if(current_channel_map_state != systemStates.channel_map.state) {
+      __TIMESTAMP();LOG("_GetSystemStates return ChannelMapState = %d\r\n", systemStates.channel_map.state);
+      current_channel_map_state = systemStates.channel_map.state;
+    }
+
     #ifdef MEDIA_CLIENT
     	systemStates.channel_map.state=2;
     	systemStates.TuneReadyStatus.state=1;
