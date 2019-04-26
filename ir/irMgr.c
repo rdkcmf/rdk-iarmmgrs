@@ -470,6 +470,7 @@ static void _IrInputKeyEventHandler(int keyType, int keyCode , int keySrc, unsig
         case KED_VOLUME_OPTIMIZE:
         case KED_XR11_NOTIFY:
         case KED_XR15V1_NOTIFY:
+        case KED_XR16V1_NOTIFY:
         case KED_SCREEN_BIND_NOTIFY:
             LOG("This (0x%x) is not a key press. Control event only.\n", keyCode);
         case KED_VOLUMEUP:
@@ -593,6 +594,36 @@ static void _IrInputKeyEventHandler(int keyType, int keyCode , int keySrc, unsig
             {
                 xr15_or_newer_notify_call = true;
                 _IrInputKeyEventHandler(KET_KEYDOWN, KED_XR15V1_NOTIFY, keySrc, keySrcId);
+                gCurrentKeyCode = KED_SELECT;
+            }
+            else
+            {
+                xr15_or_newer_notify_call = false;
+                gCurrentKeyCode = KED_UNDEFINEDKEY;
+            }
+            _IrInputKeyEventHandler(keyType, KED_SELECT, keySrc, keySrcId);
+            return;
+        case KED_XR16V1_PUSH_TO_TALK:
+            LOG_TRANSLATE_EVENT(KED_XR16V1_PUSH_TO_TALK, KED_PUSH_TO_TALK);
+            if (KET_KEYDOWN == keyType)
+            {
+                xr15_or_newer_notify_call = true;
+                _IrInputKeyEventHandler(KET_KEYDOWN, KED_XR16V1_NOTIFY, keySrc, keySrcId);
+                gCurrentKeyCode = KED_PUSH_TO_TALK;
+            }
+            else
+            {
+                xr15_or_newer_notify_call = false;
+                gCurrentKeyCode = KED_UNDEFINEDKEY;
+            }
+            _IrInputKeyEventHandler(keyType, KED_PUSH_TO_TALK, keySrc, keySrcId);
+            return;
+        case KED_XR16V1_SELECT:
+            LOG_TRANSLATE_EVENT(KED_XR16V1_SELECT, KED_SELECT);
+            if (KET_KEYDOWN == keyType)
+            {
+                xr15_or_newer_notify_call = true;
+                _IrInputKeyEventHandler(KET_KEYDOWN, KED_XR16V1_NOTIFY, keySrc, keySrcId);
                 gCurrentKeyCode = KED_SELECT;
             }
             else
