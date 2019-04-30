@@ -668,7 +668,16 @@ static void _irEventHandler(const char *owner, IARM_EventId_t eventId, void *dat
                     curState = transitionState;
                 }
 #endif
-	        	IARM_Bus_PWRMgr_PowerState_t newState = ((curState == IARM_BUS_PWRMGR_POWERSTATE_ON) ? IARM_BUS_PWRMGR_POWERSTATE_STANDBY : IARM_BUS_PWRMGR_POWERSTATE_ON);
+                IARM_Bus_PWRMgr_PowerState_t newState;
+                const device::SleepMode &mode = device::Host::getInstance().getPreferredSleepMode();
+                if(mode.getId() == dsHOST_SLEEP_MODE_DEEP)
+                {
+                    newState = ((curState == IARM_BUS_PWRMGR_POWERSTATE_ON) ? IARM_BUS_PWRMGR_POWERSTATE_STANDBY_DEEP_SLEEP: IARM_BUS_PWRMGR_POWERSTATE_ON);
+                }
+                else
+                {
+                    newState = ((curState == IARM_BUS_PWRMGR_POWERSTATE_ON) ? IARM_BUS_PWRMGR_POWERSTATE_STANDBY : IARM_BUS_PWRMGR_POWERSTATE_ON);
+                }
                 if((keyCode == KED_DEEPSLEEP_WAKEUP) && (keyType == KET_KEYUP) && (curState == IARM_BUS_PWRMGR_POWERSTATE_STANDBY_DEEP_SLEEP))
                 {
                     newState = IARM_BUS_PWRMGR_POWERSTATE_ON;
