@@ -103,6 +103,27 @@ static gboolean _SetResolutionHandler(gpointer data);
 static guint hotplug_event_src = 0;
 static gboolean dumpEdidOnChecksumDiff(gpointer data);
 
+static int getVideoPortHandle(_dsVideoPortType_t port)
+{
+    /* Get the HDMI Video Port Parameter */
+    dsVideoPortGetHandleParam_t vidPortParam;
+    memset(&vidPortParam, 0, sizeof(vidPortParam));
+    vidPortParam.type = port;
+    vidPortParam.index = 0;
+    _dsGetVideoPort(&vidPortParam);
+    return vidPortParam.handle;
+}
+
+static bool isHDMIConnected()
+{
+    /* Get the Display connection status */
+    dsVideoPortIsDisplayConnectedParam_t ConParam;
+    memset(&ConParam, 0, sizeof(ConParam));
+    ConParam.handle = getVideoPortHandle(dsVIDEOPORT_TYPE_HDMI);
+    _dsIsDisplayConnected(&ConParam);
+    return ConParam.connected; 
+}
+
 IARM_Result_t DSMgr_Start()
 {
 	FILE *fDSCtrptr = NULL;
@@ -169,6 +190,11 @@ IARM_Result_t DSMgr_Start()
         INFO_LOG("Fails to Create a main Loop for [%s] \r\n",IARM_BUS_DSMGR_NAME);
     }
 
+    if(!isHDMIConnected())
+    {
+        __TIMESTAMP();printf("HDMI not connected at bootup -Schedule a handler to set the resolution .. \r\n");
+        _SetVideoPortResolution(); 
+    }
 	return IARM_RESULT_SUCCESS;
 }
 
@@ -384,35 +410,18 @@ static int _SetVideoPortResolution()
 
 	__TIMESTAMP(); printf("%s:Enter \r\n",__FUNCTION__);
 	 
-	
-	/* Get the HDMI Video Port Parameter */
-	{
-		dsVideoPortGetHandleParam_t vidPortParam;
-		memset(&vidPortParam, 0, sizeof(vidPortParam));
-		vidPortParam.type = dsVIDEOPORT_TYPE_HDMI;
-		vidPortParam.index = 0;
-		_dsGetVideoPort(&vidPortParam);
-		_hdmihandle = vidPortParam.handle;
-	}
-	
+        _hdmihandle = getVideoPortHandle(dsVIDEOPORT_TYPE_HDMI);	
 	if(_hdmihandle != NULL)
 	{		
 
 		usleep(100*1000);	//wait for 100 milli seconds
 
 
-		{
-			/* Get the Display connection status */
-			dsVideoPortIsDisplayConnectedParam_t ConParam;
-			memset(&ConParam, 0, sizeof(ConParam));
-			ConParam.handle = _hdmihandle;
-			_dsIsDisplayConnected(&ConParam);
-			connected = ConParam.connected;
-		}
 		/* 	
 			* Check for HDMI DDC Line  when HDMI is connected.
 		*/
-		if((iInitResnFlag) && (connected))
+                connected = isHDMIConnected();
+		if(iInitResnFlag && connected)
 		{
 
 			#ifdef _INIT_RESN_SETTINGS  	
@@ -437,18 +446,8 @@ static int _SetVideoPortResolution()
 			_SetResolution(&_hdmihandle,dsVIDEOPORT_TYPE_HDMI);
 		}
 		else {
-			_comphandle = NULL;
+			_comphandle = getVideoPortHandle(dsVIDEOPORT_TYPE_COMPONENT);
 			
-			/* Get Component Video Port Parameter */
-			{
-				dsVideoPortGetHandleParam_t vidPortParam;
-				memset(&vidPortParam, 0, sizeof(vidPortParam));
-				vidPortParam.type = dsVIDEOPORT_TYPE_COMPONENT;
-				vidPortParam.index = 0;
-				_dsGetVideoPort(&vidPortParam);
-				_comphandle = vidPortParam.handle;
-			}
-
 			if (NULL != _comphandle)
 			{
 				__TIMESTAMP();printf("Setting Component/Composite Resolution.......... \r\n");
@@ -456,7 +455,29 @@ static int _SetVideoPortResolution()
 			}
 			else
 			{
-			__TIMESTAMP();printf("%s: NULL Handle for Component/Composite \r\n",__FUNCTION__);
+			    __TIMESTAMP();printf("%s: NULL Handle for component\r\n",__FUNCTION__);
+
+                            int _compositehandle = getVideoPortHandle(dsVIDEOPORT_TYPE_BB);
+
+                            if (NULL != _compositehandle)
+                            {
+                                __TIMESTAMP();printf("Setting BB Composite Resolution.......... \r\n");
+                                _SetResolution(&_compositehandle,dsVIDEOPORT_TYPE_BB);
+                            }
+                            else
+                            {
+                                 __TIMESTAMP();printf("%s: NULL Handle for Composite \r\n",__FUNCTION__);
+                                 int _rfhandle = getVideoPortHandle(dsVIDEOPORT_TYPE_RF);
+                                 if (NULL != _rfhandle)
+                                 {
+                                     __TIMESTAMP();printf("Setting RF Resolution.......... \r\n");
+                                     _SetResolution(&_rfhandle,dsVIDEOPORT_TYPE_RF);
+                                 }
+                                 else
+                                 {
+                                     __TIMESTAMP();printf("%s: NULL Handle for RF \r\n",__FUNCTION__);
+                                 }
+                            }
 			}
 		
 		}
@@ -618,7 +639,7 @@ static int  _SetResolution(int* handle,dsVideoPortType_t PortType)
 			}
 		}
 	}
-	else if (PortType == dsVIDEOPORT_TYPE_COMPONENT)
+	else if (PortType == dsVIDEOPORT_TYPE_COMPONENT || PortType == dsVIDEOPORT_TYPE_BB || PortType == dsVIDEOPORT_TYPE_RF)
 	{
 		/* Set the Component / Composite  Resolution */	
 		numResolutions = dsUTL_DIM(kResolutions);
