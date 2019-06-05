@@ -142,6 +142,7 @@ extern "C" {
 #define KED_FRONTPANEL2          0x000000A8UL
 #define KED_OK   		         0x000000A9UL
 #define KED_STAR                 0x000000AAUL
+#define KED_PROGRAM              0x000000ABUL
 
 #define KED_TVPOWER		    0x000000C1UL	// Alt remote
 #define KED_PREVIOUS		0x000000C3UL	// Alt remote

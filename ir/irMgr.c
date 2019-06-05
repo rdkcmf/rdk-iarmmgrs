@@ -1198,7 +1198,7 @@ static void _ctrlmEventHandler(const char *owner, IARM_EventId_t eventId, void *
 //                    case CTRLM_KEY_CODE_DOLLAR:         keyCode = KED_????; break;
 //                    case CTRLM_KEY_CODE_PERCENT:        keyCode = KED_????; break;
 //                    case CTRLM_KEY_CODE_AMPERSAND:      keyCode = KED_????; break;
-                    case CTRLM_KEY_CODE_ASTERISK:       keyCode = KED_STAR; break;
+                    case CTRLM_KEY_CODE_ASTERISK:       keyCode = KED_PROGRAM; break;
 //                    case CTRLM_KEY_CODE_LEFT_PAREN:     keyCode = KED_????; break;
 //                    case CTRLM_KEY_CODE_RIGHT_PAREN:    keyCode = KED_????; break;
 //                    case CTRLM_KEY_CODE_PLUS:           keyCode = KED_????; break;
