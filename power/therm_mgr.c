@@ -43,39 +43,25 @@ extern "C"
 #include "plat_power.h"
 #include "pwrlogger.h"
 #include "libIBus.h"
-
-#define tokey(x) #x
+#include "rfcapi.h"
 
 #define STANDBY_REASON_FILE       "/opt/standbyReason.txt"
 #define THERMAL_PROTECTION_GROUP  "Thermal_Config"
 #define THERMAL_SHUTDOWN_REASON   "THERMAL_SHUTDOWN"
 
-#define THERMAL_POLL_INTERVAL
 #define RFC_ENABLE_ThermalProtection
 #define RFC_DATA_ThermalProtection_POLL_INTERVAL
 
-#define THERMAL_REBOOT_CRITICAL_THRESHOLD
-#define THERMAL_REBOOT_CONCERN_THRESHOLD
-#define THERMAL_REBOOT_GRACE_INTERVAL
-#define THERMAL_REBOOT_SAFE_THRESHOLD
 #define RFC_DATA_ThermalProtection_REBOOT_CRITICAL_THRESHOLD
 #define RFC_DATA_ThermalProtection_REBOOT_CONCERN_THRESHOLD
 #define RFC_DATA_ThermalProtection_REBOOT_GRACE_INTERVAL
 #define RFC_DATA_ThermalProtection_REBOOT_SAFE_THRESHOLD
 
-#define THERMAL_DEEPSLEEP_CRITICAL_THRESHOLD
-#define THERMAL_DEEPSLEEP_CONCERN_THRESHOLD
-#define THERMAL_DEEPSLEEP_GRACE_INTERVAL
-#define THERMAL_DEEPSLEEP_SAFE_THRESHOLD
 #define RFC_DATA_ThermalProtection_DEEPSLEEP_CRITICAL_THRESHOLD
 #define RFC_DATA_ThermalProtection_DEEPSLEEP_CONCERN_THRESHOLD
 #define RFC_DATA_ThermalProtection_DEEPSLEEP_GRACE_INTERVAL
 #define RFC_DATA_ThermalProtection_DEEPSLEEP_SAFE_THRESHOLD
 
-#define THERMAL_DECLOCK_CRITICAL_THRESHOLD
-#define THERMAL_DECLOCK_CONCERN_THRESHOLD
-#define THERMAL_DECLOCK_GRACE_INTERVAL
-#define THERMAL_DECLOCK_SAFE_THRESHOLD
 #define RFC_DATA_ThermalProtection_DECLOCK_CRITICAL_THRESHOLD
 #define RFC_DATA_ThermalProtection_DECLOCK_CONCERN_THRESHOLD
 #define RFC_DATA_ThermalProtection_DECLOCK_GRACE_INTERVAL
@@ -122,19 +108,14 @@ static int thermal_declock_grace_interval           = 60;
 
 
 // the interval at which temperature will be polled from lower layers
-static int thermal_poll_interval 	= 30; //in seconds
+static int thermal_poll_interval        = 30; //in seconds
 // the interval after which reboot will happen if the temperature goes above reboot threshold
 
 //Did we already read config params once ?
-static bool read_config_param 		= FALSE;
-// opt override for thermal configuration, this will be overriden by RFC file
-static char  *configProp_FilePath 	= "/opt/thermalmgr.conf";
-//RFC configuration file path
-static char *rfc_FilePath		= "/opt/secure/RFC/.RFC_ThermalProtection.ini";
-//Path where RFC file converted to glib style conf file
-static char *rfcProp_FilePath		= "/tmp/thermalmgr.conf";
+static bool read_config_param           = FALSE;
+
 // Is feature enabled ?
-static bool isFeatureEnabled 		= TRUE;
+static bool isFeatureEnabled            = TRUE;
 //Current temperature level
 static volatile IARM_Bus_PWRMgr_ThermalState_t cur_Thermal_Level = IARM_BUS_PWRMGR_TEMPERATURE_NORMAL;
 ///Current temperature reading in celcius
@@ -149,6 +130,10 @@ static uint32_t PLAT_CPU_SPEED_MINIMAL = 0;
 
 // Thread id of polling thread
 static pthread_t thermalThreadId = NULL;
+
+// RFC parameter storage
+#define MAX_THERMAL_RFC 16 
+static char valueBuf[MAX_THERMAL_RFC];
 
 //Functions used
 /**
@@ -174,7 +159,7 @@ static IARM_Result_t _GetTemperatureThresholds(void *arg);
 /**
 * This function reads configuration details from relevant configuration files.
 */
-static bool read_ConfigProps(bool isRFCEnabled);
+static bool read_ConfigProps();
 /**
 * Check whether RFC based control is present, if yes create a glib style config file
 */
@@ -187,20 +172,17 @@ static bool updateRFCStatus();
 
 static bool isThermalProtectionEnabled()
 {
-	if (!read_config_param)
-	{
-		if (updateRFCStatus())
-		{
-			read_ConfigProps(true);
-		}
-		else
-		{
-			read_ConfigProps(false);
-		}
-		read_config_param= TRUE;
-	}
+        if (!read_config_param)
+        {
+                if (updateRFCStatus())
+                {
+                    read_ConfigProps();
+                }
 
-	return isFeatureEnabled;
+                read_config_param= TRUE;
+        }
+
+        return isFeatureEnabled;
 }
 
 void initializeThermalProtection()
@@ -396,11 +378,11 @@ static void declockIfNeeded()
                 PLAT_API_SetClockSpeed(PLAT_CPU_SPEED_SCALED);
                 cur_Cpu_Speed = PLAT_CPU_SPEED_SCALED;
             }
-	    gettimeofday(&monitorTime, NULL);
-	}
+            gettimeofday(&monitorTime, NULL);
+        }
         else if (cur_Thermal_Value > thermal_declock_safe_threshold)
-	//Between thermal_declock_concern_threshold and thermal_declock_safe_threshold
-	{
+        //Between thermal_declock_concern_threshold and thermal_declock_safe_threshold
+        {
             if (cur_Cpu_Speed == PLAT_CPU_SPEED_MINIMAL) {
                 /* We are already declocked. If we stay in this state for 'thermal_declock_grace_interval' we will change to */
                 gettimeofday(&tv, NULL);
@@ -575,42 +557,74 @@ static IARM_Result_t _SetTemperatureThresholds(void *arg)
 static bool updateRFCStatus()
 {
     bool result = false;
-    struct stat buf;
+    RFC_ParamData_t param;
 
-    if (stat(rfc_FilePath, &buf) == 0)
-    {
-        LOG("[%s:%d] RFC File is present .. filtering data to tmp file \n", __FUNCTION__, __LINE__);
-        system("echo [Thermal_Config]>/tmp/thermalmgr.conf" );
-        system("grep ThermalProtection /opt/secure/RFC/.RFC_ThermalProtection.ini | awk '{print $2}' >>/tmp/thermalmgr.conf");
-        result = true;
-    }
-    else
-    {
-        LOG("[%s:%d] Failed to find RFC file %s \n", __FUNCTION__, __LINE__, rfc_FilePath);
-    }
-
+    isFeatureEnabled = TRUE;
+	
+    WDMP_STATUS status = getRFCParameter(THERMAL_PROTECTION_GROUP, "RFC_ENABLE_ThermalProtection", &param);
+	
+	if (status == WDMP_SUCCESS)
+	{
+		LOG("[%s:%d] Key: RFC_ENABLE_ThermalProtection,Value %s  \n", __FUNCTION__ , __LINE__, param.value);
+                if (0 == strncasecmp(param.value, "false",5))
+                {
+                        isFeatureEnabled = FALSE;
+                }
+                else
+                {
+                        result = true;
+                }
+	}
+	else
+	{
+		LOG("[%s:%d] Key: RFC_ENABLE_ThermalProtection is not configured, Status %d  \n", __FUNCTION__ , __LINE__, status);
+	}
+	
     return result;
 }
 
-static gchar * read_ConfigProperty(GKeyFile *key_file, char* key)
+static char * read_ConfigProperty(const char* key)
 {
-    GError *error = NULL;
-    gchar *value = NULL;
+    char *value = NULL;
+	int dataLen;
+	RFC_ParamData_t param;
 
-    if (g_key_file_has_key (key_file, THERMAL_PROTECTION_GROUP, key, &error))
-    {
-        value = g_key_file_get_value(key_file, THERMAL_PROTECTION_GROUP, key, &error);
-        gchar * result =  g_shell_unquote(value, &error);
-        if (result == NULL)
-        {
-            LOG("[%s:%d] Quote filter failed %s  \n", __FUNCTION__ , __LINE__, error->message);
-            g_error_free(error);
-        }
+
+	WDMP_STATUS status = getRFCParameter(THERMAL_PROTECTION_GROUP, key, &param);
+
+	valueBuf[0] = '\0';
+
+	if (status == WDMP_SUCCESS)
+	{
+		dataLen = strlen(param.value);
+		if (dataLen > MAX_THERMAL_RFC-1)
+		{
+			dataLen = MAX_THERMAL_RFC-1;
+		}
+
+		if ( (param.value[0] == '"') && (param.value[dataLen-1] == '"'))
+		{
+			// remove quotes arround data
+			strncpy (valueBuf, &param.value[1], dataLen-2);
+			valueBuf[dataLen-2] = '\0';
+		}
+		else
+		{
+			strncpy (valueBuf, param.value, MAX_THERMAL_RFC-1);
+			valueBuf[MAX_THERMAL_RFC-1] = '\0';
+		}
+
+		LOG("name = %s, type = %d, value = %s, status = %d\n", param.name, param.type, param.value, status);
+	}
         else
         {
-            g_free(value);
-            value = result;
+                LOG("[%s:%d] Key: property %s is not configured, Status %d  \n", __FUNCTION__ , __LINE__, key, status);
         }
+
+
+    if (valueBuf[0])
+    {
+        value = valueBuf;
     }
     else
     {
@@ -620,289 +634,109 @@ static gchar * read_ConfigProperty(GKeyFile *key_file, char* key)
     return value;
 }
 
-static bool read_ConfigProps(bool isRFCEnabled)
+static bool read_ConfigProps()
 {
-    GKeyFile *key_file = NULL;
-    GError *error = NULL;
-    gchar *value = NULL;
-    char *filename = NULL;
-
-    key_file = g_key_file_new();
-    if (!key_file)
-    {
-        LOG("[%s:%d] Failed to g_key_file_new() \n", __FUNCTION__, __LINE__);
-        return false;
-    }
-
-    filename = isRFCEnabled ? rfcProp_FilePath:configProp_FilePath;
-    LOG( "[%s()] Reading configuration from %s... \n",__FUNCTION__,filename);
-
-    if (!g_key_file_load_from_file(key_file, filename, G_KEY_FILE_KEEP_COMMENTS, &error))
-    {
-        LOG("[%s:%d] Failed with \"%s\" \n", __FUNCTION__, __LINE__, error->message);
-        return false;
-    }
-
-    if (g_key_file_has_group (key_file,THERMAL_PROTECTION_GROUP ))
-    {
-        if (isRFCEnabled)
-        {
-            value  = read_ConfigProperty(key_file, tokey(RFC_ENABLE_ThermalProtection));
-            if (value !=NULL)
-            {
-                LOG("[%s:%d] Key: RFC_ENABLE_ThermalProtection,Value %s  \n", __FUNCTION__ , __LINE__, value);
-                if (!strcmp(value,"false") || !strcmp(value,"FALSE"))
-                {
-                    isFeatureEnabled = false;
-                }
-                g_free(value);
-            }
-        }
-    }
-    else
-    {
-        LOG("[%s:%d] Unable to find group in configuration file\n", __FUNCTION__, __LINE__);
-    }
-
-    //Not enabled with RFC mode? No need to dig further.
-    if (isRFCEnabled && !isFeatureEnabled )
-    {
-        g_key_file_free(key_file);
-        return isFeatureEnabled;
-    }
-
-    value = read_ConfigProperty(key_file,tokey(THERMAL_REBOOT_CRITICAL_THRESHOLD));
-    if (NULL != value)
-    {
-        thermal_reboot_critical_threshold =atoi(value);
-        g_free(value);
-    }
-
-    value = read_ConfigProperty(key_file,tokey(THERMAL_REBOOT_CONCERN_THRESHOLD));
-    if (NULL != value)
-    {
-        thermal_reboot_concern_threshold =atoi(value);
-        g_free(value);
-    }
-
-    value = read_ConfigProperty(key_file,tokey(THERMAL_REBOOT_SAFE_THRESHOLD));
-    if (NULL != value)
-    {
-        thermal_reboot_safe_threshold =atoi(value);
-        g_free(value);
-    }
-
-    value = read_ConfigProperty(key_file,tokey(THERMAL_REBOOT_GRACE_INTERVAL));
-    if (NULL != value)
-    {
-        thermal_reboot_grace_interval = atoi(value);
-        g_free(value);
-    }
-
-
-    value = read_ConfigProperty(key_file,tokey(THERMAL_DECLOCK_CRITICAL_THRESHOLD));
-    if (NULL != value)
-    {
-        thermal_declock_critical_threshold =atoi(value);
-        g_free(value);
-    }
-
-    value = read_ConfigProperty(key_file,tokey(THERMAL_DECLOCK_CONCERN_THRESHOLD));
-    if (NULL != value)
-    {
-        thermal_declock_concern_threshold =atoi(value);
-        g_free(value);
-    }
-
-    value = read_ConfigProperty(key_file,tokey(THERMAL_DECLOCK_SAFE_THRESHOLD));
-    if (NULL != value)
-    {
-        thermal_declock_safe_threshold =atoi(value);
-        g_free(value);
-    }
-
-    value = read_ConfigProperty(key_file,tokey(THERMAL_DECLOCK_GRACE_INTERVAL));
-    if (NULL != value)
-    {
-        thermal_declock_grace_interval = atoi(value);
-        g_free(value);
-    }
-
-
-    value = read_ConfigProperty(key_file,tokey(THERMAL_DEEPSLEEP_CRITICAL_THRESHOLD));
-    if (NULL != value)
-    {
-        thermal_deepsleep_critical_threshold =atoi(value);
-        g_free(value);
-    }
-
-    value = read_ConfigProperty(key_file,tokey(THERMAL_DEEPSLEEP_CONCERN_THRESHOLD));
-    if (NULL != value)
-    {
-        thermal_deepsleep_concern_threshold =atoi(value);
-        g_free(value);
-    }
-
-    value = read_ConfigProperty(key_file,tokey(THERMAL_DEEPSLEEP_SAFE_THRESHOLD));
-    if (NULL != value)
-    {
-        thermal_deepsleep_safe_threshold =atoi(value);
-        g_free(value);
-    }
-
-    value = read_ConfigProperty(key_file,tokey(THERMAL_DEEPSLEEP_GRACE_INTERVAL));
-    if (NULL != value)
-    {
-        thermal_deepsleep_grace_interval = atoi(value);
-        g_free(value);
-    }
-
-
-    value = read_ConfigProperty(key_file,tokey(THERMAL_POLL_INTERVAL));
-    if (NULL != value)
-    {
-        thermal_poll_interval = atoi(value);
-        g_free(value);
-    }
-
-    value = read_ConfigProperty(key_file,tokey(PLAT_CPU_SPEED_NORMAL));
-    if (NULL != value)
-    {
-        PLAT_CPU_SPEED_NORMAL =atoi(value);
-        g_free(value);
-    }
-
-    value = read_ConfigProperty(key_file,tokey(PLAT_CPU_SPEED_SCALED));
-    if (NULL != value)
-    {
-        PLAT_CPU_SPEED_SCALED =atoi(value);
-        g_free(value);
-    }
-
-    value = read_ConfigProperty(key_file,tokey(PLAT_CPU_SPEED_MINIMAL));
-    if (NULL != value)
-    {
-        PLAT_CPU_SPEED_MINIMAL =atoi(value);
-        g_free(value);
-    }
-
+    char *value = NULL;
 
     //Now override with RFC values if any
-    value = read_ConfigProperty(key_file,tokey(RFC_DATA_ThermalProtection_REBOOT_CRITICAL_THRESHOLD));
+    value = read_ConfigProperty("RFC_DATA_ThermalProtection_REBOOT_CRITICAL_THRESHOLD");
     if (NULL != value)
     {
         thermal_reboot_critical_threshold = atoi(value);
-        g_free(value);
     }
 
-    value = read_ConfigProperty(key_file,tokey(RFC_DATA_ThermalProtection_REBOOT_CONCERN_THRESHOLD));
+    value = read_ConfigProperty("RFC_DATA_ThermalProtection_REBOOT_CONCERN_THRESHOLD");
     if (NULL != value)
     {
         thermal_reboot_concern_threshold = atoi(value);
-        g_free(value);
     }
 
-    value = read_ConfigProperty(key_file,tokey(RFC_DATA_ThermalProtection_REBOOT_SAFE_THRESHOLD));
+    value = read_ConfigProperty("RFC_DATA_ThermalProtection_REBOOT_SAFE_THRESHOLD");
     if (NULL != value)
     {
         thermal_reboot_safe_threshold = atoi(value);
-        g_free(value);
     }
 
-    value = read_ConfigProperty(key_file,tokey(RFC_DATA_ThermalProtection_REBOOT_GRACE_INTERVAL));
+    value = read_ConfigProperty("RFC_DATA_ThermalProtection_REBOOT_GRACE_INTERVAL");
     if (NULL != value)
     {
         thermal_reboot_grace_interval = atoi(value);
-        g_free(value);
     }
 
 
-    value = read_ConfigProperty(key_file,tokey(RFC_DATA_ThermalProtection_DECLOCK_CRITICAL_THRESHOLD));
+    value = read_ConfigProperty("RFC_DATA_ThermalProtection_DECLOCK_CRITICAL_THRESHOLD");
     if (NULL != value)
     {
         thermal_declock_critical_threshold = atoi(value);
-        g_free(value);
     }
 
-    value = read_ConfigProperty(key_file,tokey(RFC_DATA_ThermalProtection_DECLOCK_CONCERN_THRESHOLD));
+    value = read_ConfigProperty("RFC_DATA_ThermalProtection_DECLOCK_CONCERN_THRESHOLD");
     if (NULL != value)
     {
         thermal_declock_concern_threshold = atoi(value);
-        g_free(value);
     }
 
-    value = read_ConfigProperty(key_file,tokey(RFC_DATA_ThermalProtection_DECLOCK_SAFE_THRESHOLD));
+    value = read_ConfigProperty("RFC_DATA_ThermalProtection_DECLOCK_SAFE_THRESHOLD");
     if (NULL != value)
     {
         thermal_declock_safe_threshold = atoi(value);
-        g_free(value);
     }
 
-    value = read_ConfigProperty(key_file,tokey(RFC_DATA_ThermalProtection_DECLOCK_GRACE_INTERVAL));
+    value = read_ConfigProperty("RFC_DATA_ThermalProtection_DECLOCK_GRACE_INTERVAL");
     if (NULL != value)
     {
         thermal_declock_grace_interval = atoi(value);
-        g_free(value);
     }
 
-    value = read_ConfigProperty(key_file,tokey(RFC_DATA_ThermalProtection_DEEPSLEEP_CRITICAL_THRESHOLD));
+    value = read_ConfigProperty("RFC_DATA_ThermalProtection_DEEPSLEEP_CRITICAL_THRESHOLD");
     if (NULL != value)
     {
         thermal_deepsleep_critical_threshold =atoi(value);
-        g_free(value);
     }
 
-    value = read_ConfigProperty(key_file,tokey(RFC_DATA_ThermalProtection_DEEPSLEEP_CONCERN_THRESHOLD));
+    value = read_ConfigProperty("RFC_DATA_ThermalProtection_DEEPSLEEP_CONCERN_THRESHOLD");
     if (NULL != value)
     {
         thermal_deepsleep_concern_threshold = atoi(value);
-        g_free(value);
     }
 
-    value = read_ConfigProperty(key_file,tokey(RFC_DATA_ThermalProtection_DEEPSLEEP_SAFE_THRESHOLD));
+    value = read_ConfigProperty("RFC_DATA_ThermalProtection_DEEPSLEEP_SAFE_THRESHOLD");
     if (NULL != value)
     {
         thermal_deepsleep_safe_threshold = atoi(value);
-        g_free(value);
     }
 
-    value = read_ConfigProperty(key_file,tokey(RFC_DATA_ThermalProtection_DEEPSLEEP_GRACE_INTERVAL));
+    value = read_ConfigProperty("RFC_DATA_ThermalProtection_DEEPSLEEP_GRACE_INTERVAL");
     if (NULL != value)
     {
         thermal_deepsleep_grace_interval = atoi(value);
-        g_free(value);
     }
 
 
-    value = read_ConfigProperty(key_file,tokey(RFC_DATA_ThermalProtection_POLL_INTERVAL));
+    value = read_ConfigProperty("RFC_DATA_ThermalProtection_POLL_INTERVAL");
     if (NULL != value)
     {
         thermal_poll_interval = atoi(value);
-        g_free(value);
     }
 
-    value = read_ConfigProperty(key_file,tokey(RFC_DATA_ThermalProtection_PLAT_CPU_SPEED_NORMAL));
+    value = read_ConfigProperty("RFC_DATA_ThermalProtection_PLAT_CPU_SPEED_NORMAL");
     if (NULL != value)
     {
         PLAT_CPU_SPEED_NORMAL =atoi(value);
-        g_free(value);
     }
 
-    value = read_ConfigProperty(key_file,tokey(RFC_DATA_ThermalProtection_PLAT_CPU_SPEED_SCALED));
+    value = read_ConfigProperty("RFC_DATA_ThermalProtection_PLAT_CPU_SPEED_SCALED");
     if (NULL != value)
     {
         PLAT_CPU_SPEED_SCALED =atoi(value);
-        g_free(value);
     }
 
-    value = read_ConfigProperty(key_file,tokey(RFC_DATA_ThermalProtection_PLAT_CPU_SPEED_MINIMAL));
+    value = read_ConfigProperty("RFC_DATA_ThermalProtection_PLAT_CPU_SPEED_MINIMAL");
     if (NULL != value)
     {
         PLAT_CPU_SPEED_MINIMAL =atoi(value);
-        g_free(value);
     }
 
-    g_key_file_free(key_file);
     return true;
 }
 

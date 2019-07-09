@@ -31,7 +31,9 @@ INCLUDES = -I=$(IARM) -I=$(IARM_MGR) \
            -I ../sysmgr/include \
            -I=${includedir}/ccec/drivers \
            -I=$(includedir)/rdk/ds \
-           -I=$(includedir)/rdk/ds-hal
+           -I=$(includedir)/rdk/ds-hal \
+           -I=/usr/include/wdmp-c \
+           -I=/usr/include
 
 CC = $(CXX)
 
@@ -40,4 +42,5 @@ AM_CFLAGS = $(INCLUDES) -fPIC -D_REENTRANT -Wall -DGP_VERSION_11
 bin_PROGRAMS = pwrMgrMain
 
 pwrMgrMain_SOURCES = iarmcec.c coldFactoryReset.c customerReset.c factoryReset.c  personalityReset.c pwrMgr.c pwrMgrMain.c reset.c  sleepTimer.c wareHouseReset.c pwrlogger.h pwrMgrInternal.h
-pwrMgrMain_LDADD = -lds -ldshalcli -liarmmgrs-power-hal
+pwrMgrMain_LDADD = -lds -ldshalcli -liarmmgrs-power-hal -lrfcapi
+
