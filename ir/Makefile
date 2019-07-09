@@ -83,6 +83,9 @@ endif
 endif
 
 
+ifeq ($(COMCAST_PLATFORM), XI3)
+CFLAGS  += -D_DISABLE_KEY_POWEROFF
+endif
 
 ifeq ($(PLATFORM_SOC),broadcom)
 ifeq ($(COMCAST_PLATFORM), XI3)

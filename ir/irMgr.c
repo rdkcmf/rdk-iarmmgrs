@@ -668,6 +668,41 @@ static void _IrInputKeyEventHandler(int keyType, int keyCode , int keySrc, unsig
                 prevEventData.data.irkey.keySourceId = keySrcId;
         prevEventData.data.irkey.keyCode = keyCode;
         IARMCEC_SendCECActiveSource(isCecLocalLogicEnabled,keyType,keyCode);
+#ifdef _DISABLE_KEY_POWEROFF    //XITHREE-7832
+        bool broadcastEvent = true;
+        static int prevKeyType = keyType;
+
+        if(keyCode == KED_FP_POWER) {
+            switch(keyType) {
+                case KET_KEYREPEAT:
+                    if(prevKeyType == KET_KEYDOWN) {
+                        keyType = KET_KEYUP;
+                    }
+                    else {
+                        broadcastEvent = false;
+                    }
+                    break;
+
+                case KET_KEYUP:
+                    if(prevKeyType != KET_KEYDOWN) {
+                        broadcastEvent = false;
+                    }
+                    break;
+
+                default:
+                    break;
+
+            }
+        }
+        prevKeyType = keyType;
+        eventData.data.irkey.keyType = keyType;
+        if(!broadcastEvent) {
+            LOG("Discarding key event!!! keyCode: %x keyType: %x\n",keyCode,keyType);
+            pthread_mutex_unlock(&tKeySeqMutex);
+            return;
+        }
+        LOG("Broadcasting key event!!! keyCode: %x keyType: %x\n",eventData.data.irkey.keyCode,eventData.data.irkey.keyType);
+#endif
         if (udispatcher){
             udispatcher(keyCode, keyType, keySrc);
         }
