@@ -239,9 +239,14 @@ static void _eventHandler(const char *owner, IARM_EventId_t eventId, void *data,
 #endif
                         LOG("Enter to Deep sleep Mode..stop fog service before DS \r\n");
                         system("systemctl stop fog.service");
+                        int status = -1;
+                        int retryCount = 0;
+                        while(retryCount< 5)
+                        {
 #ifdef ENABLE_DEEPSLEEP_WAKEUP_EVT
                         LOG("Device entering Deep sleep Mode.. \r\n");
-                        bool userWakeup = PLAT_DS_SetDeepSleep(deep_sleep_wakeup_timer);
+                        bool userWakeup = 0;
+                        status = PLAT_DS_SetDeepSleep(deep_sleep_wakeup_timer,&userWakeup);
                         LOG("Device resumed from Deep sleep Mode. \r\n");
 
                         if (userWakeup)
@@ -265,10 +270,25 @@ static void _eventHandler(const char *owner, IARM_EventId_t eventId, void *data,
                             LOG("Resumed without user action. Not sending KED_DEEPSLEEP_WAKEUP. \r\n");
                         }
 #else
-                        PLAT_DS_SetDeepSleep(deep_sleep_wakeup_timer);
+                        status = PLAT_DS_SetDeepSleep(deep_sleep_wakeup_timer);
                         LOG("Device entered to Deep sleep Mode.. \r\n");
 
 #endif
+                       if(status != 0)
+                       {
+                           sleep(5);
+                           retryCount++;
+                           if(retryCount >= 5)
+                           {
+                              LOG("ERROR: Device failed to enter into Deep sleep Mode.. \r\n");
+                              return;
+                           }
+                       }
+                       else
+                       {
+                          break;
+                       }
+                       }
                     }
                     IsDeviceInDeepSleep = 1; 
                 }
@@ -364,6 +384,8 @@ static IARM_Result_t _SetDeepSleepTimer(void *arg)
 static gboolean deep_sleep_delay_timer_fn(gpointer data)
 {
     struct stat buf;
+    int status = -1;
+  
     LOG("Deep Sleep Timer Expires :Enter to Deep sleep Mode..stop Receiver with sleep 10 before DS \r\n");       
     system("sleep 10");
 
@@ -375,7 +397,16 @@ static gboolean deep_sleep_delay_timer_fn(gpointer data)
     else
     system("systemctl stop xre-receiver.service");
     system("systemctl stop wpeframework.service");
-    PLAT_DS_SetDeepSleep(deep_sleep_wakeup_timer);
+  #ifdef ENABLE_DEEPSLEEP_WAKEUP_EVT
+    bool userWakeup = 0;
+    status = PLAT_DS_SetDeepSleep(deep_sleep_wakeup_timer,&userWakeup);
+  #else
+    status = PLAT_DS_SetDeepSleep(deep_sleep_wakeup_timer);
+  #endif
+    if(status != 0)
+    {
+       LOG("deep_sleep_delay_timer_fn: Failed to enter deepsleep state \n");
+    }
     return FALSE; // Send False so the handler should not be called again
 }
 

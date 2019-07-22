@@ -83,9 +83,9 @@ int PLAT_DS_INIT(void);
  * @return  Return the status of the operation
  */
 #ifdef ENABLE_DEEPSLEEP_WAKEUP_EVT
-bool PLAT_DS_SetDeepSleep(uint32_t deep_sleep_timeout);
+int PLAT_DS_SetDeepSleep(uint32_t deep_sleep_timeout, bool *isGPIOWakeup);
 #else
-void PLAT_DS_SetDeepSleep(uint32_t deep_sleep_timeout);
+int PLAT_DS_SetDeepSleep(uint32_t deep_sleep_timeout);
 #endif
 
 /**
