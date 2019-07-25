@@ -221,8 +221,8 @@ static void _eventHandler(const char *owner, IARM_EventId_t eventId, void *data,
                         {
                            LOG("stopping xre-receiver service\r\n");
                            system("systemctl stop xre-receiver.service");
-                           LOG("stopping wpecdmi service\r\n");
-                           system("systemctl stop wpecdmi.service");
+                           LOG("stopping wpeframework service\r\n");
+                           system("systemctl stop wpeframework.service");
                         }
 #ifdef ENABLE_DEEPSLEEP_FPLED_HANDLING
                         __TIMESTAMP();LOG("FrontPanelConfig::fPTerm\n");
@@ -322,8 +322,8 @@ static IARM_Result_t _DeepSleepWakeup(void *arg)
             }
             else
             {
-                LOG("Restarting WPEcdmi Service After Waking up from Deep Sleep\r\n");
-                system("systemctl restart wpecdmi.service");
+                LOG("Restarting WPEFramework Service After Waking up from Deep Sleep\r\n");
+                system("systemctl restart wpeframework.service");
                 LOG("Restarting Receiver Service After Waking up from Deep Sleep\r\n");
                 system("systemctl restart xre-receiver.service");
             }
@@ -363,7 +363,7 @@ static gboolean deep_sleep_delay_timer_fn(gpointer data)
     }
     else
     system("systemctl stop xre-receiver.service");
-    system("systemctl stop wpecdmi.service");
+    system("systemctl stop wpeframework.service");
     PLAT_DS_SetDeepSleep(deep_sleep_wakeup_timer);
     return FALSE; // Send False so the handler should not be called again
 }
