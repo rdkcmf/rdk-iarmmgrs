@@ -669,8 +669,16 @@ static void _irEventHandler(const char *owner, IARM_EventId_t eventId, void *dat
                 }
 #endif
                 IARM_Bus_PWRMgr_PowerState_t newState;
-                const device::SleepMode &mode = device::Host::getInstance().getPreferredSleepMode();
-                if(mode.getId() == dsHOST_SLEEP_MODE_DEEP)
+                dsSleepMode_t  sleepMode = dsHOST_SLEEP_MODE_LIGHT;
+                try
+                {
+                    sleepMode = static_cast<dsSleepMode_t>(device::Host::getInstance().getPreferredSleepMode().getId());
+                }
+                catch(...)
+                {
+                    LOG("PwrMgr: Exception coughht while processing getPreferredSleepMode\r\n");
+                }
+                if(sleepMode == dsHOST_SLEEP_MODE_DEEP)
                 {
                     newState = ((curState == IARM_BUS_PWRMGR_POWERSTATE_ON) ? IARM_BUS_PWRMGR_POWERSTATE_STANDBY_DEEP_SLEEP: IARM_BUS_PWRMGR_POWERSTATE_ON);
                 }
