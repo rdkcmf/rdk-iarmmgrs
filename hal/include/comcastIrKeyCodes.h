@@ -164,6 +164,8 @@ extern "C" {
 #define KED_RF_PAIR_GHOST	0x000000EFUL	// Ghost code to implement auto pairing in RF remotes
 #define KED_WPS                 0x000000F0UL    // Key to initiate WiFi WPS pairing
 #define KED_DEEPSLEEP_WAKEUP    0x000000F1UL    // Key to initiate deepsleep wakeup
+#define KED_NEW_BATTERIES_INSERTED 0x000000F2UL // Signals a battery set was replaced
+#define KED_GRACEFUL_SHUTDOWN      0x000000F3UL // Signals an external power supply device is shutting down
 #define KED_UNDEFINEDKEY	0x000000FEUL	// Use for keys not defined here.  Pass raw code as well.
 
 
