@@ -54,6 +54,7 @@ extern "C"
 #include "irMgr.h"
 #include "comcastIrKeyCodes.h"
 #include "frontPanelConfig.hpp"
+#include "manager.hpp"
 
 /* For glib APIs*/
 #include <glib.h>
@@ -95,8 +96,14 @@ IARM_Result_t DeepSleepMgr_Start(int argc, char *argv[])
     IARM_Bus_RegisterEventHandler(IARM_BUS_PWRMGR_NAME,IARM_BUS_PWRMGR_EVENT_DEEPSLEEP_TIMEOUT,_eventHandler);
     IARM_Bus_RegisterCall(IARM_BUS_COMMON_API_DeepSleepWakeup,_DeepSleepWakeup);
     IARM_Bus_RegisterCall(IARM_BUS_DEEPSLEEPMGR_API_SetDeepSleepTimer, _SetDeepSleepTimer);
-
-    
+#ifdef ENABLE_DEEPSLEEP_FPLED_HANDLING
+     try {
+        device::Manager::Initialize();
+    }
+    catch (...){
+        LOG("Exception Caught during [device::Manager::Initialize]\r\n");
+    }
+#endif    
     /* Main loop for Deep  Sleep Manager */
     deepSleepMgr_Loop = g_main_loop_new ( NULL , FALSE );
     if(deepSleepMgr_Loop != NULL){
