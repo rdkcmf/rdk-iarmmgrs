@@ -556,6 +556,7 @@ static void _irEventHandler(const char *owner, IARM_EventId_t eventId, void *dat
             	IARM_Bus_PWRMgr_SetPowerState_Param_t param;
                 LOG("Setting Discrete Powerstate cur=%d,new=%d\r\n", curState, newState);
 				param.newState = newState;
+                                param.keyCode = keyCode;
                 _SetPowerState((void *)&param);
 				return;
 	        }
@@ -732,7 +733,7 @@ static void _irEventHandler(const char *owner, IARM_EventId_t eventId, void *dat
 	                    LOG("Setting Powerstate cur=%d,new=%d\r\n", curState, newState);
 	                    IARM_Bus_PWRMgr_SetPowerState_Param_t param;
 	                    param.newState = newState;
-
+                            param.keyCode = keyCode;
                         int doNothandlePowerKey = ((disableKeyPowerOff) && (curState == IARM_BUS_PWRMGR_POWERSTATE_ON) && (newState != IARM_BUS_PWRMGR_POWERSTATE_ON));
 
 #ifdef _ENABLE_FP_KEY_SENSITIVITY_IMPROVEMENT
@@ -846,7 +847,15 @@ static IARM_Result_t _SetPowerState(void *arg)
         if (newState != IARM_BUS_PWRMGR_POWERSTATE_ON) {
             time(&xre_timer); // Hack to fix DELIA-11393
             LOG("Invoking clean up script\r\n");
-            system("/lib/rdk/standbyCleanup.sh");
+            if(param->keyCode != KED_FP_POWER)
+            {
+                system("/lib/rdk/standbyCleanup.sh");
+            }
+            else
+            {
+                __TIMESTAMP();LOG("Standby operation due to KED_FP_POWER key press, Invoking script with forceShutdown \r\n");
+                system("/lib/rdk/standbyCleanup.sh --forceShutdown");
+            }
         }
 
         /* Independent of Deep sleep */

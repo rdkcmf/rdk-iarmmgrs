@@ -120,6 +120,7 @@ typedef struct _IARM_BUS_PWRMgr_DeepSleepTimeout_EventData_t {
  */
 typedef struct _IARM_Bus_PWRMgr_SetPowerState_Param_t {
 	IARM_Bus_PWRMgr_PowerState_t newState;        /*!< [in] New powerstate to be set */
+        int keyCode;                                  /*!< [in] Key code for the last key Pressed */
 } IARM_Bus_PWRMgr_SetPowerState_Param_t;
 
 #define IARM_BUS_PWRMGR_API_GetPowerState 		"GetPowerState" /*!< Retrives current  power state of the box*/
