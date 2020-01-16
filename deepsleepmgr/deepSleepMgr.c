@@ -230,6 +230,8 @@ static void _eventHandler(const char *owner, IARM_EventId_t eventId, void *data,
                            system("systemctl stop xre-receiver.service");
                            LOG("stopping wpeframework service\r\n");
                            system("systemctl stop wpeframework.service");
+                           LOG("Unmounting SDcard partition\r\n");
+                           system("sh /lib/rdk/disk_checkV2 deepsleep ON");
                         }
 #ifdef ENABLE_DEEPSLEEP_FPLED_HANDLING
                         __TIMESTAMP();LOG("FrontPanelConfig::fPTerm\n");
@@ -315,6 +317,8 @@ static IARM_Result_t _DeepSleepWakeup(void *arg)
             system(syscommand);
             LOG("Restarting  Storage Manager Service After Waking up from Deep Sleep.. \r\n");
             system("systemctl restart storagemgrmain.service");
+            LOG("Mounting SDcard partition After Waking up from Deep Sleep..\r\n");
+            system("sh /lib/rdk/disk_checkV2 deepsleep OFF");
             LOG("Restarting fog Service After Waking up from Deep Sleep.. \r\n");
             system("systemctl restart fog.service &");
             LOG("Restarting xdiscovery Service After Waking up from Deep Sleep.. \r\n");
