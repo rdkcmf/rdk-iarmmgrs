@@ -41,18 +41,53 @@ extern "C"
 #include "pwrlogger.h"
 
 
+int uint32_compare( const void* a, const void* b)
+{
+     const uint32_t l = * ((const uint32_t*) a);
+     const uint32_t r = * ((const uint32_t*) b);
+
+     if ( l == r ) return 0;
+     else if ( l < r ) return -1;
+     else return 1;
+}
+
+
 int PLAT_API_DetemineClockSpeeds(uint32_t *cpu_rate_Normal, uint32_t *cpu_rate_Scaled, uint32_t *cpu_rate_Minimal)
 {
 	FILE * fp;
 	uint32_t normal = 0;
 	uint32_t scaled = 0;
 	uint32_t minimal = 0;
+	uint32_t freqList[32];
+	uint32_t numFreqs = 0;
+	uint32_t i;
+
 	fp = fopen ("/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_frequencies", "r");
 	if (fp == 0) {
 		LOG("[%s:%d] Unable to open '/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_frequencies' for reading\n", __FUNCTION__ , __LINE__);
 		return 0;
 	}
-	fscanf(fp, "%u %u %u", &normal, &scaled, &minimal);
+
+	/* Determine available frequencies */
+	while (numFreqs < sizeof(freqList)/sizeof(freqList[0]) && (fscanf(fp, "%u", &freqList[numFreqs]) == 1))
+		numFreqs++;
+
+	if (numFreqs<=0) {
+		LOG("[%s] **ERROR** Unable to read sacaling frequencies!\n", __FUNCTION__);
+		return -1;
+	}
+
+	/* Ensure frequencies are sorted */
+	qsort( (void*)freqList, numFreqs, sizeof(freqList[0]), uint32_compare );
+	LOG("[%s] Scaling Frequency List:\n", __FUNCTION__);
+	for(i=0; i < numFreqs; i++) LOG ("    [%s] %uhz\n", __FUNCTION__, freqList[i]);
+
+	/* Select normal, scaled and minimal from the list */
+	minimal=freqList[0];
+	scaled=freqList[numFreqs/2];
+	normal=freqList[numFreqs-1];
+	LOG("[%s] Using -- Normal:%u Scaled:%u Minimal:%u\n", __FUNCTION__, normal, scaled, minimal);
+
 	fclose(fp);
 
 	if (cpu_rate_Normal)  *cpu_rate_Normal = normal;
