@@ -57,6 +57,7 @@ extern "C"
 #include "iarmUtil.h"
 #include "irMgr.h"
 #include "sysMgr.h"
+#include "dsMgr.h"
 #include "comcastIrKeyCodes.h"
 #include "libIBus.h"
 #include "plat_power.h"
@@ -212,6 +213,7 @@ static pthread_mutex_t  wareHouseOpsMutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_t asyncPowerWarehouseOpsThreadId = NULL;
 
 
+static void _sleepModeChangeHandler(const char *owner, IARM_EventId_t eventId, void *data, size_t len);
 static void _controlEventHandler(const char *owner, IARM_EventId_t eventId, void *data, size_t len);
 static void _irEventHandler(const char *owner, IARM_EventId_t eventId, void *data, size_t len);
 static void _systemStateChangeHandler(const char *owner, IARM_EventId_t eventId, void *data, size_t len);
@@ -242,6 +244,7 @@ static IARM_Bus_PWRMgr_PowerState_t _ConvertUIDevToIARMBusPowerState(UIDev_Power
 static IARM_Result_t _SetStandbyVideoState(void *arg);
 static IARM_Result_t _GetStandbyVideoState(void *arg);
 static int ecm_connectivity_lost = 0;
+dsSleepMode_t  m_sleepMode = dsHOST_SLEEP_MODE_LIGHT;
 time_t xre_timer; // Hack to fix DELIA-11393
 static bool deepSleepWakeup = false;
 extern void IARM_Bus_PWRMGR_RegisterSleepTimerAPIs(void *);
@@ -405,6 +408,7 @@ IARM_Result_t PWRMgr_Start(int argc, char *argv[])
     IARM_Bus_RegisterEventHandler(IARM_BUS_IRMGR_NAME, IARM_BUS_IRMGR_EVENT_CONTROL, _controlEventHandler);
 
     IARM_Bus_RegisterEventHandler(IARM_BUS_SYSMGR_NAME, IARM_BUS_SYSMGR_EVENT_SYSTEMSTATE, _systemStateChangeHandler);
+    IARM_Bus_RegisterEventHandler(IARM_BUS_DSMGR_NAME,IARM_BUS_DSMGR_EVENT_SLEEP_MODE_CHANGED,_sleepModeChangeHandler);
 
 #ifndef NO_RF4CE
 #ifdef USE_UNIFIED_CONTROL_MGR_API_1
@@ -466,7 +470,16 @@ IARM_Result_t PWRMgr_Start(int argc, char *argv[])
     char *rdk_deep_sleep_wakeup = getenv("RDK_DEEPSLEEP_WAKEUP_ON_POWER_BUTTON");
     deepSleepWakeup = (rdk_deep_sleep_wakeup && atoi(rdk_deep_sleep_wakeup));
 
-    return IARM_RESULT_SUCCESS;
+    try
+    {
+            m_sleepMode = static_cast<dsSleepMode_t>(device::Host::getInstance().getPreferredSleepMode().getId());
+            printf ("initial value m_sleepMode:%d \n", m_sleepMode);
+    }
+    catch(...)
+    {
+        LOG("PwrMgr: Exception coughht while processing getPreferredSleepMode\r\n");
+    }
+	return IARM_RESULT_SUCCESS;
 }
 
 IARM_Result_t PWRMgr_Loop()
@@ -671,6 +684,25 @@ IARM_Result_t PWRMgr_Stop(void)
     IARM_Bus_Term();
     PLAT_TERM();
     return IARM_RESULT_SUCCESS;
+}
+
+void _sleepModeChangeHandler(const char *owner, IARM_EventId_t eventId, void *data, size_t len)
+{
+    if (strcmp(owner,IARM_BUS_DSMGR_NAME) == 0)
+    {
+        switch (eventId) {
+        case IARM_BUS_DSMGR_EVENT_SLEEP_MODE_CHANGED:
+        {
+            IARM_Bus_DSMgr_EventData_t *eventData = (IARM_Bus_DSMgr_EventData_t *)data;
+            m_sleepMode = eventData->data.sleepModeInfo.sleepMode;
+            printf("%s  m_sleepMode :%d \n",__FUNCTION__,m_sleepMode);
+        }
+        break;
+
+        default:
+            break;
+        }
+    }
 }
 
 static void _systemStateChangeHandler(const char *owner, IARM_EventId_t eventId, void *data, size_t len)
@@ -928,16 +960,7 @@ static void _irEventHandler(const char *owner, IARM_EventId_t eventId, void *dat
                 }
 #endif
                 IARM_Bus_PWRMgr_PowerState_t newState;
-                dsSleepMode_t  sleepMode = dsHOST_SLEEP_MODE_LIGHT;
-                try
-                {
-                    sleepMode = static_cast<dsSleepMode_t>(device::Host::getInstance().getPreferredSleepMode().getId());
-                }
-                catch(...)
-                {
-                    LOG("PwrMgr: Exception coughht while processing getPreferredSleepMode\r\n");
-                }
-                if(sleepMode == dsHOST_SLEEP_MODE_DEEP)
+                if(m_sleepMode == dsHOST_SLEEP_MODE_DEEP)
                 {
                     newState = ((curState == IARM_BUS_PWRMGR_POWERSTATE_ON) ? IARM_BUS_PWRMGR_POWERSTATE_STANDBY_DEEP_SLEEP: IARM_BUS_PWRMGR_POWERSTATE_ON);
                 }
