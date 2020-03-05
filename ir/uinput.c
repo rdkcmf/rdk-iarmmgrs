@@ -42,11 +42,15 @@ do {\
     uidev.id.version = 1;\
 } while(0)
 
+#ifdef __cplusplus
+extern "C" { 
+#endif
 static int devFd = -1;
 static uint32_t getKeyCode(uint32_t keycode, uint32_t *uCode, uint32_t *uModi)
 {
     unsigned char i;
 
+    printf("%s %d uinput received Key code %d 0x%x \r\n", __FUNCTION__, __LINE__, keycode, keycode);
     for (i=0; i < (sizeof(kcodesMap_IARM2Linux)/sizeof(kcodesMap_IARM2Linux[0])); i++)
     {   
         if (kcodesMap_IARM2Linux[i].iCode == keycode)
@@ -105,6 +109,7 @@ static void udispatcher_internal(int code, int value)
 
 static void udispatcher (int keyCode, int keyType, int source)
 {
+    printf("%s %d uinput received Key code= %d 0x%x  keyType= %d 0x%x \r\n", __FUNCTION__, __LINE__, keyCode, keyCode, keyType, keyType);
     if (devFd >= 0) {
         static const char * type2str[] = {"KEY_UP", "KEY_DOWN", "KEY_REPEAT"};
         uint32_t uCode = _KEY_INVALID;
@@ -223,3 +228,6 @@ int UINPUT_term()
     devFd = -1;
     return 0;
 }
+#ifdef __cplusplus
+}
+#endif

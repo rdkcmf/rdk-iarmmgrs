@@ -136,6 +136,9 @@ IARM_Result_t IRMgr_Stop(void);
 
 IARM_Result_t IRMgr_Register_uinput(uinput_dispatcher_t f);
 
+#ifdef __cplusplus
+extern "C" { 
+#endif
 /**
  * @brief uinput module init.
  *
@@ -160,6 +163,9 @@ uinput_dispatcher_t UINPUT_GetDispatcher(void);
  */
 int UINPUT_term(void);
 
+#ifdef __cplusplus
+}
+#endif
 IARM_Result_t IRMgr_Register_uinput(uinput_dispatcher_t f);
 #endif
 

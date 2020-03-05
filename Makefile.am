@@ -30,10 +30,12 @@ package_ipk:
 	@echo "Generating IPK Package"
 	$(MAKE) prefix=${abs_top_builddir}/staging_dir install
 	$(mkdir_p) $(IPK_GEN_STAGING_DIR)/usr/bin
+	$(mkdir_p) $(IPK_GEN_STAGING_DIR)/usr/lib
 	$(mkdir_p) $(IPK_GEN_STAGING_DIR)/lib/systemd/system/
 	cp -af $(abs_top_builddir)/conf/* $(IPK_GEN_STAGING_DIR)/lib/systemd/system/
 	cp -af $(IPK_GEN_STAGING_DIR)/bin/deviceUpdateMgrMain $(IPK_GEN_STAGING_DIR)/usr/bin/
 	cp -rf $(IPK_GEN_STAGING_DIR)/bin/irMgrMain $(IPK_GEN_STAGING_DIR)/usr/bin/
+	cp -P -rf $(IPK_GEN_STAGING_DIR)/lib/libuinput.* $(IPK_GEN_STAGING_DIR)/usr/lib/
 	cp -rf $(IPK_GEN_STAGING_DIR)/bin/pwrMgrMain $(IPK_GEN_STAGING_DIR)/usr/bin/
 	cp -rf $(IPK_GEN_STAGING_DIR)/bin/deepSleepMgrMain $(IPK_GEN_STAGING_DIR)/usr/bin/
 	!(test -s $(IPK_GEN_STAGING_DIR)/bin/mfrMgrMain) || cp -rf $(IPK_GEN_STAGING_DIR)/bin/mfrMgrMain $(IPK_GEN_STAGING_DIR)/usr/bin/

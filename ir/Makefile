@@ -19,9 +19,11 @@
 #
 RM          := rm -rf
 CFLAGS      := -g -fPIC -D_REENTRANT -Wall
-OBJS        := $(patsubst %.c,%.o,$(wildcard *.c))
+UINPUT      := uinput 
+OBJS        := $(patsubst %.c,%.o,$(filter-out uinput.c,$(wildcard *.c)))
+OBJS_uinput := $(patsubst %.c,%.o,uinput.c)
 CPPLAGS      := -g -fPIC -D_REENTRANT -Wall
-
+UILIB        = libuinput
 
 INCLUDE     =	-I.\
 		-I$(IARM_PATH)/core/include	\
@@ -130,8 +132,11 @@ objs: $(OBJS)
 	@echo "Building $@ ...."
 	$(CXX) -c $<  $(CFLAGS) -o $@
 
-executable: $(OBJS)
-	$(CXX) $(CFLAGS) $(LDFLAGS) $(OBJS) -o irMgrMain
+executable: $(OBJS) $(UILIB).so
+	$(CXX) $(CFLAGS) $(LDFLAGS) $(OBJS) -o irMgrMain -L./  -l$(UINPUT)
+
+$(UILIB).so: $(OBJS_uinput)
+	$(CC) -fPIC $(CFLAGS) -shared $(LDFLAGS) $(OBJS_uinput) -o $@
 
 clean:
 	@echo "Cleaning the directory..."
