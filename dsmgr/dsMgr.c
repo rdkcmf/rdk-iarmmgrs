@@ -79,7 +79,7 @@ static int _SetVideoPortResolution();
 static int  _SetResolution(int* handle,dsVideoPortType_t PortType);
 static void _EventHandler(const char *owner, IARM_EventId_t eventId, void *data, size_t len);
 static IARM_Result_t _SysModeChange(void *arg);
-static void dumpHdmiEdidInfo();
+static void dumpHdmiEdidInfo(dsDisplayEDID_t* pedidData);
 static int iTuneReady = 0;
 static dsDisplayEvent_t edisplayEventStatus = dsDISPLAY_EVENT_MAX;
 static pthread_t edsHDMIHPDThreadID; // HDMI HPD - HDMI Hot Plug detect events
@@ -91,8 +91,6 @@ static void _setEASAudioMode();
 static int iResnCount = 5;
 static int iInitResnFlag = 0;
 static bool bHDCPAuthenticated = false;
-static dsDisplayEDID_t edidData;
-static dsDisplayGetEDIDParam_t Edidparam;
 static IARM_Bus_Daemon_SysMode_t isEAS = IARM_BUS_SYS_MODE_NORMAL; // Default is Normal Mode
 
 
@@ -490,6 +488,8 @@ static int  _SetResolution(int* handle,dsVideoPortType_t PortType)
 	dsVideoPortSetResolutionParam_t Setparam;
 	dsVideoPortGetResolutionParam_t Getparam;
 	dsVideoPortResolution_t *setResn = NULL;
+	dsDisplayEDID_t edidData;
+	dsDisplayGetEDIDParam_t Edidparam;
 	/*
 		* Default Resolution Compatible check is false - Do not Force compatible resolution on startup
 	*/
@@ -525,7 +525,7 @@ static int  _SetResolution(int* handle,dsVideoPortType_t PortType)
 			_dsGetEDID(&Edidparam);
 			memcpy(&edidData, &Edidparam.edid, sizeof(Edidparam.edid));
 
-			dumpHdmiEdidInfo();
+			dumpHdmiEdidInfo(&edidData);
 			numResolutions = edidData.numOfSupportedResolution;
 			__TIMESTAMP();printf("numResolutions is %d \r\n",numResolutions);
 			
@@ -891,18 +891,23 @@ static void _setAudioMode()
  *
  * @return NULL
  */
-static void dumpHdmiEdidInfo()
+static void dumpHdmiEdidInfo(dsDisplayEDID_t* pedidData)
 {
 	__TIMESTAMP();printf("Connected HDMI Display Device Info !!!!!\r\n");
 
-	if(edidData.monitorName)
-	printf("HDMI  Monitor Name is %s \r\n",edidData.monitorName);
-	printf("HDMI  Manufacturing ID is %d \r\n",edidData.serialNumber);
-	printf("HDMI  Product Code is %d \r\n",edidData.productCode);
-	printf("HDMI  Device Type is  %s \r\n",edidData.hdmiDeviceType?"HDMI":"DVI");
-	printf("HDMI  Sink Device %s a Repeater \r\n",edidData.isRepeater?"is":"is not");
-	printf("HDMI  Physical Address is %d:%d:%d:%d \r\n",edidData.physicalAddressA,
-			edidData.physicalAddressB,edidData.physicalAddressC,edidData.physicalAddressD);
+	if (NULL == pedidData) {
+		__TIMESTAMP(); printf("Received EDID is NULL \r\n");
+		return;
+	}    
+
+	if(pedidData->monitorName)
+	printf("HDMI  Monitor Name is %s \r\n",pedidData->monitorName);
+	printf("HDMI  Manufacturing ID is %d \r\n",pedidData->serialNumber);
+	printf("HDMI  Product Code is %d \r\n",pedidData->productCode);
+	printf("HDMI  Device Type is  %s \r\n",pedidData->hdmiDeviceType?"HDMI":"DVI");
+	printf("HDMI  Sink Device %s a Repeater \r\n",pedidData->isRepeater?"is":"is not");
+	printf("HDMI  Physical Address is %d:%d:%d:%d \r\n",pedidData->physicalAddressA,
+			pedidData->physicalAddressB,pedidData->physicalAddressC,pedidData->physicalAddressD);
 }
 
 
