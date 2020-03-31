@@ -523,6 +523,13 @@ static void _irEventHandler(const char *owner, IARM_EventId_t eventId, void *dat
 	int resetState = 0;
 
 	{
+
+            if((keyType != KET_KEYUP) && (keyType != KET_KEYDOWN) && (keyType != KET_KEYREPEAT))
+            {
+                LOG("Unexpected Key type recieved %X\r\n",keyType);
+                return;
+            }
+
 	    /*LOG("Power Manager Get IR Key (%x, %x) From IR Manager\r\n", keyCode, keyType);*/
 #ifdef _ENABLE_FP_KEY_SENSITIVITY_IMPROVEMENT
             if( (keyType == KET_KEYDOWN) && (keyCode == KED_FP_POWER))
