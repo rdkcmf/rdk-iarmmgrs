@@ -221,7 +221,7 @@ static void _eventHandler(const char *owner, IARM_EventId_t eventId, void *data,
                     }
                     else{
                         LOG("Enter to Deep sleep Mode..stop Receiver with sleep 10 before DS \r\n");       
-                        system("sleep 10");
+                        system("sleep 5");
                         if ((stat("/lib/systemd/system/lxc.service", &buf) == 0) && (stat("/opt/lxc_service_disabled",&buf) !=0))
                         {
                             LOG("stopping lxc service\r\n");
@@ -346,16 +346,10 @@ static IARM_Result_t _DeepSleepWakeup(void *arg)
             /*Restart Moca service when exit from Deep Sleep*/
             LOG("Restarting Moca Service After Waking up from Deep Sleep.. \r\n");
             system(syscommand);
-            LOG("Restarting  Storage Manager Service After Waking up from Deep Sleep.. \r\n");
-            system("systemctl restart storagemgrmain.service");
             LOG("Mounting SDcard partition After Waking up from Deep Sleep..\r\n");
             system("sh /lib/rdk/disk_checkV2 deepsleep OFF");
             LOG("Restarting fog Service After Waking up from Deep Sleep.. \r\n");
             system("systemctl restart fog.service &");
-            LOG("Restarting xdiscovery Service After Waking up from Deep Sleep.. \r\n");
-            system("systemctl restart xupnp.service &");
-            LOG("Restarting xcal Service After Waking up from Deep Sleep.. \r\n");
-            system("systemctl restart xcal-device.service &");
             if (isLxcRestart)
             {
                 LOG("Restarting Lxc Service After Waking up from Deep Sleep\r\n");
