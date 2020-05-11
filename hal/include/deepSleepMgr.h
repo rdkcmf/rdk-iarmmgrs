@@ -116,6 +116,7 @@ void PLAT_DS_TERM(void);
  * then the STB will accept the timer value, and go to sleep when sleep timer is expired.
  */
 #define IARM_BUS_DEEPSLEEPMGR_API_SetDeepSleepTimer		"SetDeepSleepTimer" 
+#define IARM_BUS_DEEPSLEEPMGR_API_GetLastWakeupReason		"GetLastWakeupReason"
 
 /**
  * @brief Structure which holds the Deep sleep manager timeout.
@@ -123,6 +124,30 @@ void PLAT_DS_TERM(void);
 typedef struct _IARM_Bus_DeepSleepMgr_SetDeepSleepTimer_Param_t {
 	unsigned int timeout;        /*!< Timeout for deep sleep in seconds*/ 
 } IARM_Bus_DeepSleepMgr_SetDeepSleepTimer_Param_t;
+
+typedef enum _DeepSleep_WakeupReason_t
+{
+   DEEPSLEEP_WAKEUPREASON_IR = 0,
+   DEEPSLEEP_WAKEUPREASON_RCU_BT,
+   DEEPSLEEP_WAKEUPREASON_RCU_RF4CE,
+   DEEPSLEEP_WAKEUPREASON_GPIO,
+   DEEPSLEEP_WAKEUPREASON_LAN,
+   DEEPSLEEP_WAKEUPREASON_WLAN,
+   DEEPSLEEP_WAKEUPREASON_TIMER,
+   DEEPSLEEP_WAKEUPREASON_FRONT_PANEL,
+   DEEPSLEEP_WAKEUPREASON_WATCHDOG,
+   DEEPSLEEP_WAKEUPREASON_SOFTWARE_RESET,
+   DEEPSLEEP_WAKEUPREASON_THERMAL_RESET,
+   DEEPSLEEP_WAKEUPREASON_WARM_RESET,
+   DEEPSLEEP_WAKEUPREASON_COLDBOOT,
+   DEEPSLEEP_WAKEUPREASON_STR_AUTH_FAILURE,
+   DEEPSLEEP_WAKEUPREASON_CEC,
+   DEEPSLEEP_WAKEUPREASON_PRESENCE,
+   DEEPSLEEP_WAKEUPREASON_VOICE,
+   DEEPSLEEP_WAKEUPREASON_UNKNOWN
+}DeepSleep_WakeupReason_t;
+
+int  PLAT_DS_GetLastWakeupReason(DeepSleep_WakeupReason_t *wakeupReason);
 
 /** @} */ //End of Doxygen tag
 #endif
