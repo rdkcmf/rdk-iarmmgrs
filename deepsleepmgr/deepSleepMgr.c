@@ -64,6 +64,7 @@ static void _eventHandler(const char *owner, IARM_EventId_t eventId, void *data,
 static IARM_Result_t _DeepSleepWakeup(void *arg);
 static IARM_Result_t _SetDeepSleepTimer(void *arg);
 static IARM_Result_t _GetDeepSleepStatus(void *arg);
+static IARM_Result_t _GetLastWakeupReason(void *arg);
 
 static gboolean heartbeatMsg(gpointer data);
 static gboolean deep_sleep_delay_timer_fn(gpointer data);
@@ -108,6 +109,7 @@ IARM_Result_t DeepSleepMgr_Start(int argc, char *argv[])
 #endif    
     IARM_Bus_RegisterCall("GetDeepSleepStatus", _GetDeepSleepStatus);
 
+    IARM_Bus_RegisterCall(IARM_BUS_DEEPSLEEPMGR_API_GetLastWakeupReason, _GetLastWakeupReason);
     /* Main loop for Deep  Sleep Manager */
     deepSleepMgr_Loop = g_main_loop_new ( NULL , FALSE );
     if(deepSleepMgr_Loop != NULL){
@@ -454,6 +456,13 @@ static gboolean deep_sleep_delay_timer_fn(gpointer data)
        LOG("deep_sleep_delay_timer_fn: Failed to enter deepsleep state \n");
     }
     return FALSE; // Send False so the handler should not be called again
+}
+
+static IARM_Result_t _GetLastWakeupReason(void *arg)
+{
+	DeepSleep_WakeupReason_t *wakeupReason = (DeepSleep_WakeupReason_t *)arg;
+	int status = PLAT_DS_GetLastWakeupReason(wakeupReason);
+	return IARM_RESULT_SUCCESS;
 }
 
 /** @} */
