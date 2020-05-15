@@ -363,6 +363,7 @@ static IARM_Result_t _DeepSleepWakeup(void *arg)
     
         LOG("Device woke up from Deep sleep Mode.. \r\n");
     }
+	return IARM_RESULT_SUCCESS;
 }
 
 
