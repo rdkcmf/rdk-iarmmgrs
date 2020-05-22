@@ -22,9 +22,7 @@ After=lighttpd.service iarmbusd.service irmgr.service dsmgr.service pwrmgr.servi
 
 [Service]
 Type=notify
-ExecStartPre=/bin/sh -c '/lib/rdk/getNonRootUserStatus.sh'
-ExecStart=/bin/sh -c 'if [ -f /tmp/.EnableNonRootUser ]; then /bin/su non-root -c "/usr/bin/deepSleepMgrMain"; else /usr/bin/deepSleepMgrMain; fi'
-NotifyAccess=all
+ExecStart=/usr/bin/deepSleepMgrMain
 Restart=always
 
 [Install]
