@@ -167,19 +167,31 @@ std::map<string, JSONParser::varVal *> JSONParser::parse(const unsigned char *js
     yajl_handle hand;
     yajl_gen g;
     yajl_status status;
-    yajl_gen_config config;
+
     size_t jsonLen = strlen((const char *)json);
 
+#ifndef USE_YAJL2
+    yajl_gen_config config;
     yajl_parser_config cfg;
 
     config.beautify = 1;
 
     g = yajl_gen_alloc(&config, NULL);
-
     cfg.checkUTF8 = 0;
     cfg.allowComments = 1;
     //hand = yajl_alloc(&callbacks, &cfg, NULL, (void *) g);
     hand = yajl_alloc(&callbacks, &cfg, NULL, (void *) this);
+#else
+    g = yajl_gen_alloc(NULL);
+
+    yajl_gen_config(g, yajl_gen_beautify, 1);
+    yajl_gen_config(g, yajl_gen_validate_utf8, 0);
+
+    hand = yajl_alloc(&callbacks, NULL, (void *) this);
+
+    yajl_config(hand, yajl_allow_comments, 1);
+#endif
+
     status = yajl_parse(hand, json, jsonLen);
 
     if (status != yajl_status_ok) {
@@ -187,7 +199,12 @@ std::map<string, JSONParser::varVal *> JSONParser::parse(const unsigned char *js
         goto done;
     }
 
+#ifdef USE_YAJL2
+    status = yajl_complete_parse(hand);
+#else
     status = yajl_parse_complete(hand);
+#endif
+
     if (status != yajl_status_ok) {
         unsigned char *errorString = yajl_get_error(hand, 1, json, jsonLen);
         printf("%s", (const char *) errorString);
