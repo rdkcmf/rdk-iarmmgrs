@@ -136,7 +136,7 @@ executable: $(OBJS) $(UILIB).so
 	$(CXX) $(CFLAGS) $(LDFLAGS) $(OBJS) -o irMgrMain -L./  -l$(UINPUT)
 
 $(UILIB).so: $(OBJS_uinput)
-	$(CC) -fPIC $(CFLAGS) -shared $(LDFLAGS) $(OBJS_uinput) -o $@
+	$(CC) -fPIC $(CFLAGS) -shared $(LDFLAGS) -Wl,-soname,$@.0.0.0 $(OBJS_uinput) -o $@
 
 clean:
 	@echo "Cleaning the directory..."
