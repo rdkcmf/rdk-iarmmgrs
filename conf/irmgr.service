@@ -22,8 +22,7 @@ After=lighttpd.service iarmbusd.service rf4ce.service tr69hostif.service
 
 [Service]
 Type=notify
-ExecStartPre=/bin/sh -c '/lib/rdk/getNonRootUserStatus.sh'
-ExecStart=/bin/sh -c 'if [ -f /tmp/.EnableNonRootUser ]; then /bin/su non-root -c "/usr/bin/irMgrMain"; else /usr/bin/irMgrMain; fi'
+ExecStart=/usr/bin/irMgrMain
 NotifyAccess=all
 Restart=always
 
