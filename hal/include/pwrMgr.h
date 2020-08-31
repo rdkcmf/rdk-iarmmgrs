@@ -141,6 +141,10 @@ typedef struct _IARM_Bus_PWRMgr_WareHouseReset_Param_t {
 	bool suppressReboot; /*!< STB should not be rebooted */
 } IARM_Bus_PWRMgr_WareHouseReset_Param_t;
 
+#define IARM_BUS_PWRMGR_API_ColdFactoryReset "ColdFactoryReset" /*!< Reset the box to cold factory state*/
+#define IARM_BUS_PWRMGR_API_FactoryReset "FactoryReset" /*!< Reset the box to factory state*/
+#define IARM_BUS_PWRMGR_API_UserFactoryReset "UserFactoryReset" /*!< Reset the box to user factory state*/
+
 #define IARM_BUS_PWRMGR_API_SetDeepSleepTimeOut		"SetDeepSleepTimeOut" /*!< Sets the timeout for deep sleep*/
 
 /**

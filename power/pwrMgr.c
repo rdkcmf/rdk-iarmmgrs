@@ -198,6 +198,9 @@ static void _systemStateChangeHandler(const char *owner, IARM_EventId_t eventId,
 static IARM_Result_t _SetPowerState(void *arg);
 static IARM_Result_t _GetPowerState(void *arg);
 static IARM_Result_t _WareHouseReset(void *arg);
+static IARM_Result_t _ColdFactoryReset(void *);
+static IARM_Result_t _FactoryReset(void *);
+static IARM_Result_t _UserFactoryReset(void *);
 
 
 static int _InitSettings(const char *settingsFile);
@@ -296,6 +299,9 @@ IARM_Result_t PWRMgr_Start(int argc, char *argv[])
     IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_SetPowerState, _SetPowerState);
     IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_GetPowerState, _GetPowerState);
     IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_WareHouseReset, _WareHouseReset);
+    IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_ColdFactoryReset, _ColdFactoryReset);
+    IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_FactoryReset, _FactoryReset);
+    IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_UserFactoryReset, _UserFactoryReset);
     IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_SetStandbyVideoState, _SetStandbyVideoState);
     IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_GetStandbyVideoState, _GetStandbyVideoState);
     #ifdef ENABLE_DEEP_SLEEP  
@@ -952,10 +958,44 @@ static IARM_Result_t _WareHouseReset(void *arg)
     IARM_Bus_PWRMgr_WareHouseReset_Param_t *param = (IARM_Bus_PWRMgr_WareHouseReset_Param_t *)arg;
     int ret = param->suppressReboot ? processWHResetNoReboot() : processWHReset();
     LOG("_WareHouseReset returned : %d\r\n", ret);
+    fflush(stdout);
     if (ret == 0)
        return IARM_RESULT_SUCCESS;
     else
-       return IARM_RESULT_IPCCORE_FAIL; 
+       return IARM_RESULT_IPCCORE_FAIL;
+}
+
+static IARM_Result_t _ColdFactoryReset(void *)
+{
+    int ret = processColdFactoryReset();
+    LOG("_ColdFactoryReset returned : %d\r\n", ret);
+    fflush(stdout);
+    if (ret == 0)
+        return IARM_RESULT_SUCCESS;
+    else
+        return IARM_RESULT_IPCCORE_FAIL;
+}
+
+static IARM_Result_t _FactoryReset(void *)
+{
+    int ret = processFactoryReset();
+    LOG("_FactoryReset returned : %d\r\n", ret);
+    fflush(stdout);
+    if (ret == 0)
+        return IARM_RESULT_SUCCESS;
+    else
+        return IARM_RESULT_IPCCORE_FAIL;
+}
+
+static IARM_Result_t _UserFactoryReset(void *)
+{
+    int ret = processUserFactoryReset();
+    LOG("_UserFactoryReset returned : %d\r\n", ret);
+    fflush(stdout);
+    if (ret == 0)
+        return IARM_RESULT_SUCCESS;
+    else
+        return IARM_RESULT_IPCCORE_FAIL;
 }
 
 static IARM_Result_t _SetStandbyVideoState(void *arg)

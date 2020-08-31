@@ -26,14 +26,24 @@
 **/
 
 
-int processColdFactoryReset();
-int processFactoryReset();
-int processWareHouseReset();
-int processWHReset();
-int processWHResetNoReboot();
-int processCustomerReset();
-int processPersonalityReset();
-int processUserFactoryReset();
+#include <stdio.h>
+#include <stdlib.h>
+#include "resetModes.h"
+#include "pwrlogger.h"
+
+int processUserFactoryReset()
+{
+
+    LOG("\n Reset: Processing User Factory Reset\n");
+    fflush(stdout);
+
+    /*Execute the script for User Factory Reset*/
+    system("echo 0 > /opt/.rebootFlag");
+    system("echo `/bin/timestamp` ------------- Rebooting due to User Factory Reset process--------------- >> /opt/logs/receiver.log");
+
+    return system("sh /lib/rdk/deviceReset.sh userfactory");
+}
+
 
 /** @} */
 /** @} */
