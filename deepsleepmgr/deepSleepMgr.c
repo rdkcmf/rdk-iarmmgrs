@@ -70,6 +70,7 @@ static gboolean deep_sleep_delay_timer_fn(gpointer data);
 /* Variables for Deep Sleep */
 static uint32_t deep_sleep_delay_timeout = 0; 
 static uint32_t deep_sleep_wakeup_timer = 0;
+static bool nwStandbyMode_gs = false;
 GMainLoop *deepSleepMgr_Loop = NULL;
 static guint dsleep_delay_event_src = 0;
 static int IsDeviceInDeepSleep = 0;
@@ -246,7 +247,14 @@ static void _eventHandler(const char *owner, IARM_EventId_t eventId, void *data,
 #ifdef ENABLE_DEEPSLEEP_WAKEUP_EVT
                         LOG("Device entering Deep sleep Mode.. \r\n");
                         bool userWakeup = 0;
+#ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
+                        nwStandbyMode_gs = param->data.state.nwStandbyMode;
+                        LOG("\nCalling PLAT_DS_SetNetworkStandby with nwStandbyMode: %s\n", 
+                               nwStandbyMode_gs?("Enabled"):("Disabled"));
+                        status = PLAT_DS_SetNetworkStandby(deep_sleep_wakeup_timer,&userWakeup, nwStandbyMode_gs);
+#else
                         status = PLAT_DS_SetDeepSleep(deep_sleep_wakeup_timer,&userWakeup);
+#endif
                         LOG("Device resumed from Deep sleep Mode. \r\n");
 
                         if (userWakeup)
@@ -400,7 +408,11 @@ static gboolean deep_sleep_delay_timer_fn(gpointer data)
     system("systemctl stop wpeframework.service");
   #ifdef ENABLE_DEEPSLEEP_WAKEUP_EVT
     bool userWakeup = 0;
+   #ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
+    status = PLAT_DS_SetNetworkStandby(deep_sleep_wakeup_timer,&userWakeup, nwStandbyMode_gs);
+   #else
     status = PLAT_DS_SetDeepSleep(deep_sleep_wakeup_timer,&userWakeup);
+   #endif /*ENABLE_LLAMA_PLATCO_SKY_XIONE End*/ 
   #else
     status = PLAT_DS_SetDeepSleep(deep_sleep_wakeup_timer);
   #endif

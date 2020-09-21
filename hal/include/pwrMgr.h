@@ -88,7 +88,10 @@ typedef struct _PWRMgr_EventData_t {
         	IARM_Bus_PWRMgr_PowerState_t newState;	/*!< Power manager new power state */
             #ifdef ENABLE_DEEP_SLEEP
                 uint32_t deep_sleep_timeout;    
-            #endif 
+            #endif
+            #ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
+                bool nwStandbyMode;
+            #endif
 	} state; 
 	#ifdef ENABLE_THERMAL_PROTECTION
 	struct _THERM_DATA{
@@ -214,6 +217,12 @@ typedef struct _IARM_Bus_PWRMgr_StandbyVideoState_Param_t{
 } IARM_Bus_PWRMgr_StandbyVideoState_Param_t;
 #define IARM_BUS_PWRMGR_API_SetStandbyVideoState "SetStandbyVideoState"
 #define IARM_BUS_PWRMGR_API_GetStandbyVideoState "GetStandbyVideoState"
+
+#define IARM_BUS_PWRMGR_API_SetNetworkStandbyMode        "SetNetworkStandbyMode"
+#define IARM_BUS_PWRMGR_API_GetNetworkStandbyMode        "GetNetworkStandbyMode"
+typedef struct _IARM_Bus_PWRMgr_NetworkStandbyMode_Param_t {
+       bool bStandbyMode;        /*!< Standby mode to set and get*/
+} IARM_Bus_PWRMgr_NetworkStandbyMode_Param_t;
 
 #ifdef __cplusplus
 }

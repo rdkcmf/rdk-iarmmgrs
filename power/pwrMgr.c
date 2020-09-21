@@ -108,7 +108,10 @@ typedef struct _PWRMgr_Settings_t{
     PWRMgr_LED_Settings_t ledSettings;
     #ifdef ENABLE_DEEP_SLEEP
         uint32_t deep_sleep_timeout;    
-    #endif 
+    #endif
+    #ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
+        bool nwStandbyMode;
+    #endif    
     char padding[PADDING_SIZE];
 } PWRMgr_Settings_t;
 
@@ -249,6 +252,11 @@ static gboolean heartbeatMsg(gpointer data);
     static guint dsleep_bootup_event_src = 0;
     static time_t timeAtDeepSleep = 0;
 #endif
+#ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
+    static bool nwStandbyMode_gs = false;
+#endif
+static IARM_Result_t _SetNetworkStandbyMode(void *arg);
+static IARM_Result_t _GetNetworkStandbyMode(void *arg);
 
 static bool get_video_port_standby_setting(const char * port)
 {
@@ -306,7 +314,10 @@ IARM_Result_t PWRMgr_Start(int argc, char *argv[])
     IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_GetStandbyVideoState, _GetStandbyVideoState);
     #ifdef ENABLE_DEEP_SLEEP  
         IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_SetDeepSleepTimeOut, _SetDeepSleepTimeOut);
-    #endif    
+    #endif  
+    IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_SetNetworkStandbyMode, _SetNetworkStandbyMode);
+    IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_GetNetworkStandbyMode, _GetNetworkStandbyMode);
+ 
     IARM_Bus_RegisterEventHandler(IARM_BUS_IRMGR_NAME, IARM_BUS_IRMGR_EVENT_IRKEY, _irEventHandler);
     IARM_Bus_RegisterEventHandler(IARM_BUS_IRMGR_NAME, IARM_BUS_IRMGR_EVENT_CONTROL, _controlEventHandler);
 
@@ -904,6 +915,10 @@ static IARM_Result_t _SetPowerState(void *arg)
                     _eventData.data.state.deep_sleep_timeout = deep_sleep_wakeup_timeout_sec;
                 }
 
+            #ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
+                _eventData.data.state.nwStandbyMode = nwStandbyMode_gs;
+            #endif
+
 
                 /* Start a Deep sleep Wakeup Time source
                 * Reboot the box after elapse of user configured / Calculated  Timeout.
@@ -920,6 +935,9 @@ static IARM_Result_t _SetPowerState(void *arg)
                     time(&timeAtDeepSleep);
                     wakeup_event_src = g_timeout_add_seconds ((guint)30,deep_sleep_wakeup_fn,pwrMgr_Gloop); 
                     __TIMESTAMP();LOG("Added Deep Sleep Wakeup Time Source %d for %d Sec \r\n",wakeup_event_src,deep_sleep_wakeup_timeout_sec);
+                #ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
+                    __TIMESTAMP();LOG("Networkstandbymode for Source %d is: %s \r\n",wakeup_event_src, (nwStandbyMode_gs?("Enabled"):("Disabled")));
+                #endif
 
                 }
                 else if(wakeup_event_src)
@@ -931,7 +949,6 @@ static IARM_Result_t _SetPowerState(void *arg)
                     timeAtDeepSleep = 0;
                 }
             #endif
-
             IARM_Bus_BroadcastEvent( IARM_BUS_PWRMGR_NAME, 
             IARM_BUS_PWRMGR_EVENT_MODECHANGED, (void *)&_eventData, sizeof(_eventData));
             if(IARM_BUS_PWRMGR_POWERSTATE_ON == newState)
@@ -1125,7 +1142,9 @@ static int _InitSettings(const char *settingsFile)
                            #ifdef ENABLE_DEEP_SLEEP
                                  pSettings->deep_sleep_timeout = deep_sleep_wakeup_timeout_sec;
                             #endif
-
+                            #ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
+                                pSettings->nwStandbyMode = nwStandbyMode_gs;
+                            #endif
                             lseek(fd, 0, SEEK_SET);
                             write(fd, pSettings, pSettings->length);
 
@@ -1157,7 +1176,11 @@ static int _InitSettings(const char *settingsFile)
                                     deep_sleep_wakeup_timeout_sec = pSettings->deep_sleep_timeout;
                                     __TIMESTAMP();LOG("Persisted deep_sleep_delay = %d Secs \r\n",deep_sleep_wakeup_timeout_sec);
                                #endif
-                            }
+                               #ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
+                                   nwStandbyMode_gs = pSettings->nwStandbyMode;
+                                    __TIMESTAMP();LOG("Persisted network standby mode is: %s \r\n", nwStandbyMode_gs?("Enabled"):("Disabled"));
+                               #endif
+                           }
 						}
                         else if (((pSettings->length < (sizeof(PWRMgr_Settings_t) - PADDING_SIZE ))))
                         {
@@ -1179,8 +1202,11 @@ static int _InitSettings(const char *settingsFile)
                                lseek(fd, 0, SEEK_SET);         
                                #ifdef ENABLE_DEEP_SLEEP
                                    pSettings->deep_sleep_timeout = deep_sleep_wakeup_timeout_sec;
-                                #endif 
-                                pSettings->length = (sizeof(PWRMgr_Settings_t) - PADDING_SIZE );
+                               #endif 
+                               #ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
+                                   pSettings->nwStandbyMode = nwStandbyMode_gs;
+                               #endif
+                              pSettings->length = (sizeof(PWRMgr_Settings_t) - PADDING_SIZE );
                                 LOG("[PwrMgr] Write PwrMgr Settings File With Current Data Length %d \r\n",pSettings->length);
                                 ret = write(fd, pSettings, pSettings->length);
                                 if(ret != pSettings->length)
@@ -1255,7 +1281,10 @@ static int _InitSettings(const char *settingsFile)
             pSettings->powerState = IARM_BUS_PWRMGR_POWERSTATE_ON;
             #ifdef ENABLE_DEEP_SLEEP
                 pSettings->deep_sleep_timeout = deep_sleep_wakeup_timeout_sec;
-            #endif 
+            #endif
+            #ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
+                pSettings->nwStandbyMode = nwStandbyMode_gs;
+            #endif
             ret = write(fd, pSettings, pSettings->length);
             if (ret < 0) {
             }
@@ -2015,6 +2044,41 @@ static uint32_t getWakeupTime()
 }
 
 #endif
+static IARM_Result_t _SetNetworkStandbyMode(void *arg)
+{
+    IARM_Bus_PWRMgr_NetworkStandbyMode_Param_t *param = (IARM_Bus_PWRMgr_NetworkStandbyMode_Param_t *)arg;
+    uint32_t uiTimeout = 3; /*Timeout in seconds*/
+    if(param != NULL)
+    {
+#ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
+        LOG("Setting network standbyMode: %s \r\n", param->bStandbyMode?("Enabled"):("Disabled"));
+        nwStandbyMode_gs = param->bStandbyMode;
+        m_settings.nwStandbyMode = param->bStandbyMode;
+        _WriteSettings(m_settingsFile);
+#else
+        LOG ("\nError _SetNetworkStandbyMode not implemented. standbyMode: %s", param->bStandbyMode?("Enabled"):("Disabled"));
+#endif
+        return IARM_RESULT_SUCCESS;
+    }
+    return IARM_RESULT_IPCCORE_FAIL;
+}
+
+static IARM_Result_t _GetNetworkStandbyMode(void *arg)
+{
+    IARM_Bus_PWRMgr_NetworkStandbyMode_Param_t *param = (IARM_Bus_PWRMgr_NetworkStandbyMode_Param_t *)arg;
+
+    if(param != NULL)
+    {
+#ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
+        param->bStandbyMode = m_settings.nwStandbyMode;
+        LOG("Network standbyMode is: %s \r\n", param->bStandbyMode?("Enabled"):("Disabled"));
+#else
+        LOG ("\nError _GetNetworkStandbyMode not implemented.");
+#endif
+        return IARM_RESULT_SUCCESS;
+    }
+    return IARM_RESULT_IPCCORE_FAIL;
+}
 
 
 /** @} */
