@@ -663,7 +663,15 @@ static void _irEventHandler(const char *owner, IARM_EventId_t eventId, void *dat
 	                }
 	            }
                 if (!is_control_key) {
+                #ifndef _DISABLE_RESET_SEQUENCE
                    resetState = checkResetSequence(keyType,keyCode);
+                #else
+                   static bool indicatedDisable = false;
+                   if (!indicatedDisable) {
+                       indicatedDisable = true;
+                       LOG("Reset sequence is disabled");
+                   }
+                #endif
                    }
             	else {
                    __TIMESTAMP();LOG("Control Key (%02x, %02x), do not check Reset sequence", keyCode, keyType);
