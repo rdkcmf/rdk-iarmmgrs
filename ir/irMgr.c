@@ -138,6 +138,7 @@ static uinput_dispatcher_t udispatcher = NULL;
 IARM_Result_t IRMgr_Register_uinput(uinput_dispatcher_t f)
 {
     udispatcher = f;
+    return IARM_RESULT_SUCCESS;
 }
 
 IARM_Result_t IRMgr_Start(int argc, char *argv[])
@@ -956,6 +957,7 @@ static void* _LASTKeyTimerThreadFunc(void *arg)
     //Reset flag that the timer is no longer running
     bLastTimerRunning = false;
     pthread_mutex_unlock(&tKeySeqMutex);
+    return NULL;
 }
 
 /**

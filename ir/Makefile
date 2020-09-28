@@ -133,10 +133,10 @@ objs: $(OBJS)
 	$(CXX) -c $<  $(CFLAGS) -o $@
 
 executable: $(OBJS) $(UILIB).so
-	$(CXX) $(CFLAGS) $(LDFLAGS) $(OBJS) -o irMgrMain -L./  -l$(UINPUT)
+	$(CXX) $(CFLAGS) $(OBJS) -o irMgrMain -L./  -l$(UINPUT) $(LDFLAGS)
 
 $(UILIB).so: $(OBJS_uinput)
-	$(CC) -fPIC $(CFLAGS) -shared $(LDFLAGS) -Wl,-soname,$@.0.0.0 $(OBJS_uinput) -o $@
+	$(CC) -fPIC $(CFLAGS) -shared -Wl,-soname,$@.0.0.0 $(OBJS_uinput) -o $@ $(LDFLAGS)
 
 clean:
 	@echo "Cleaning the directory..."
