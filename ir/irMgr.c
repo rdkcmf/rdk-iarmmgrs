@@ -68,6 +68,13 @@ static const unsigned int gInitialWaitTimeout = 500;
 static unsigned int gRepeatKeyInterval = 50;
 static int numKeyRepeats = 0;
 static int keyLogStatus = 1;
+#ifdef XMP_TAG_OWNER_SUPPORT
+#ifdef PLATCO
+   static int expected_tag = XMP_TAG_PLATCO;
+#else
+   static int expected_tag = XMP_TAG_COMCAST;
+#endif
+#endif
 
 #ifndef NO_RF4CE
 #ifdef RF4CE_GENMSO_API
@@ -105,7 +112,12 @@ static bool bNeedRFKeyUp = false;
 
 static void _IrInputKeyEventHandler(int keyType, int keyCode, int keySrc, unsigned int keySrcId);
 static void* _KeyRepeatThreadFunc (void *arg);
-static void _IrKeyCallback(int keyType, int keyCode);
+#ifdef XMP_TAG_OWNER_SUPPORT
+   static void _IrKeyCallback(PLAT_irKey_metadata_t *irKey);
+   static void _IrKeyPairing(PLAT_irKey_metadata *irKey);
+#else
+   static void _IrKeyCallback(int keyType, int keyCode);
+#endif
 static void _IrKeyCallbackFrom(int keyType, int keyCode, int keySrc, unsigned int keySrcId);
 static void _logEventHandler(const char *owner, IARM_EventId_t eventId, void *data, size_t len);
 
@@ -186,7 +198,11 @@ IARM_Result_t IRMgr_Start(int argc, char *argv[])
     pthread_cond_init (&tMutexCond, NULL);
     pthread_create (&eRepeatThreadID, NULL, _KeyRepeatThreadFunc, NULL);
 
+#ifdef XMP_TAG_OWNER_SUPPORT
+    PLAT_API_RegisterIRKeyCallbackExtended(_IrKeyCallback);
+#else
     PLAT_API_RegisterIRKeyCallback(_IrKeyCallback);
+#endif
     IARM_Bus_RegisterEvent(IARM_BUS_IRMGR_EVENT_MAX);
 
      try {
@@ -296,13 +312,98 @@ static IARM_Result_t _GetRepeatInterval(void *arg)
     return IARM_RESULT_SUCCESS;
 }
 
-
+#ifndef XMP_TAG_OWNER_SUPPORT
 static void _IrKeyCallback(int keyType, int keyCode)
 {
 
 	_IrKeyCallbackFrom(keyType, keyCode, IARM_BUS_IRMGR_KEYSRC_IR, 0x0);
 
 }
+#else
+static void _IrKeyCallback(PLAT_irKey_metadata_t *irKey)
+{
+   __TIMESTAMP(); LOG("IR Key received (%x, %x, %x, %x)\n", irKey->tag,
+                                                            irKey->owner,
+                                                            irKey->type,
+                                                            irKey->code);
+
+   if (irKey->tag != expected_tag)
+   {
+      __TIMESTAMP(); LOG("IR Key tag is invalid (%x != %x)\n", irKey->tag, expected_tag);
+      return;
+   }
+
+   if (expected_tag == XMP_TAG_COMCAST)
+   {
+      _IrKeyCallbackFrom(irKey->type, irKey->code, IARM_BUS_IRMGR_KEYSRC_IR, 0x0);
+   }
+   else
+   {
+      switch (irKey->owner)
+      {
+         case XMP_OWNER_NORMAL:
+            _IrKeyCallbackFrom(irKey->type, irKey->code, IARM_BUS_IRMGR_KEYSRC_IR, 0x0);
+            break;
+         case XMP_OWNER_PAIRING:
+            _IrKeyPairing(irKey);
+            break;
+         case XMP_OWNER_UNDEFINED:
+         default:
+            __TIMESTAMP(); LOG("Unknown owner field %x\n", irKey->owner);
+            break;
+      }
+   }
+}
+
+static void _IrKeyPairing(PLAT_irKey_metadata_t *irKey)
+{
+   IARM_Result_t                              result;
+   ctrlm_main_iarm_call_status_t              status;
+   ctrlm_iarm_call_StartPairWithCode_params_t pair_data;
+
+   if (irKey->tag != XMP_TAG_PLATCO || irKey->owner != XMP_OWNER_PAIRING)
+   {
+      return;
+   }
+
+   memset(&status,    0, sizeof(ctrlm_main_iarm_call_status_t));
+   memset(&pair_data, 0, sizeof(ctrlm_iarm_call_StartPairWithCode_params_t));
+   status.api_revision    = CTRLM_MAIN_IARM_BUS_API_REVISION;
+   pair_data.api_revision = CTRLM_MAIN_IARM_BUS_API_REVISION;
+   pair_data.pair_code    = irKey->code;
+
+   result = IARM_Bus_Call(CTRLM_MAIN_IARM_BUS_NAME,
+                          CTRLM_MAIN_IARM_CALL_STATUS_GET,
+                          (void *) &status,
+                          sizeof(status));
+
+   if (result != IARM_RESULT_SUCCESS)
+   {
+      __TIMESTAMP(); LOG("%s: Failed = %d\n", CTRLM_MAIN_IARM_CALL_STATUS_GET,
+                                              result);
+      return;
+   }
+
+   for (int i = 0; i < status.network_qty; i++)
+   {
+      if (status.networks[i].type == CTRLM_NETWORK_TYPE_BLUETOOTH_LE)
+      {
+         pair_data.network_id = status.networks[i].id;
+
+         result = IARM_Bus_Call(CTRLM_MAIN_IARM_BUS_NAME,
+                                CTRLM_MAIN_IARM_CALL_START_PAIR_WITH_CODE,
+                                (void *) &pair_data,
+                                sizeof(ctrlm_iarm_call_StartPairWithCode_params_t));
+
+         if (result != IARM_RESULT_SUCCESS) 
+         {
+            __TIMESTAMP(); LOG("%s: Failed = %d\n", CTRLM_MAIN_IARM_CALL_START_PAIR_WITH_CODE,
+                                                    result);
+         }
+      }
+   }
+}
+#endif
 
 static void _IrKeyCallbackFrom(int keyType, int keyCode, int keySrc, unsigned int keySrcId)
 {
