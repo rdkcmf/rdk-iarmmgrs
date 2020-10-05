@@ -230,19 +230,29 @@ static void _eventHandler(const char *owner, IARM_EventId_t eventId, void *data,
                         }
                         else
                         {
+#ifndef ENABLE_LLAMA_PLATCO_SKY_XIONE
                            LOG("stopping xre-receiver service\r\n");
                            system("systemctl stop xre-receiver.service");
                            LOG("stopping wpeframework service\r\n");
                            system("systemctl stop wpeframework.service");
+#else
+			   LOG("Skipping Stopping service while entering DEEPSLEEP.\n");
+#endif
+#ifndef ENABLE_LLAMA_PLATCO
                            LOG("Unmounting SDcard partition\r\n");
                            system("sh /lib/rdk/disk_checkV2 deepsleep ON");
+#else
+			   LOG("Skipping Unmounting SDcard partition.\r\n");
+#endif
                         }
 #ifdef ENABLE_DEEPSLEEP_FPLED_HANDLING
                         __TIMESTAMP();LOG("FrontPanelConfig::fPTerm\n");
                         device::FrontPanelConfig::getInstance().fPTerm();
 #endif
-                        LOG("Enter to Deep sleep Mode..stop fog service before DS \r\n");
+#ifndef ENABLE_LLAMA_PLATCO_SKY_XIONE
+			LOG("Enter to Deep sleep Mode..stop fog service before DS \r\n");
                         system("systemctl stop fog.service");
+#endif
                         int status = -1;
                         int retryCount = 0;
                         while(retryCount< 5)
@@ -318,7 +328,9 @@ static IARM_Result_t _DeepSleepWakeup(void *arg)
 {
     IARM_Bus_CommonAPI_PowerPreChange_Param_t *param = (IARM_Bus_CommonAPI_PowerPreChange_Param_t *) arg;
 
+#ifndef ENABLE_LLAMA_PLATCO_SKY_XIONE
     char* syscommand = "systemctl restart mocadriver.service &";
+#endif
 
     LOG("RPC IARM_BUS_COMMON_API_DeepSleepWakeup : State Changed %d -- > %d\r" , param->curState , param->newState);
 
@@ -344,12 +356,18 @@ static IARM_Result_t _DeepSleepWakeup(void *arg)
         if(IsDeviceInDeepSleep)
         {
             /*Restart Moca service when exit from Deep Sleep*/
+#ifndef ENABLE_LLAMA_PLATCO_SKY_XIONE
             LOG("Restarting Moca Service After Waking up from Deep Sleep.. \r\n");
             system(syscommand);
+#endif
+#ifndef ENABLE_LLAMA_PLATCO
             LOG("Mounting SDcard partition After Waking up from Deep Sleep..\r\n");
             system("sh /lib/rdk/disk_checkV2 deepsleep OFF");
+#endif
+#ifndef ENABLE_LLAMA_PLATCO_SKY_XIONE
             LOG("Restarting fog Service After Waking up from Deep Sleep.. \r\n");
             system("systemctl restart fog.service &");
+#endif
             if (isLxcRestart)
             {
                 LOG("Restarting Lxc Service After Waking up from Deep Sleep\r\n");
@@ -358,10 +376,15 @@ static IARM_Result_t _DeepSleepWakeup(void *arg)
             }
             else
             {
+#ifndef ENABLE_LLAMA_PLATCO_SKY_XIONE
                 LOG("Restarting WPEFramework Service After Waking up from Deep Sleep\r\n");
                 system("systemctl restart wpeframework.service");
                 LOG("Restarting Receiver Service After Waking up from Deep Sleep\r\n");
                 system("systemctl restart xre-receiver.service");
+#else
+		LOG("Skipping restart of Services in Sky Platform\n");
+#endif
+
             }
         }
         IsDeviceInDeepSleep = 0;
@@ -400,9 +423,14 @@ static gboolean deep_sleep_delay_timer_fn(gpointer data)
         system("systemctl stop lxc.service");
         isLxcRestart = 1;
     }
-    else
-    system("systemctl stop xre-receiver.service");
-    system("systemctl stop wpeframework.service");
+    else {
+#ifndef ENABLE_LLAMA_PLATCO_SKY_XIONE
+      system("systemctl stop xre-receiver.service");
+      system("systemctl stop wpeframework.service");
+#else
+      LOG("Skiping Stopping of services in Sky Llama Platform\n");
+#endif
+    }
   #ifdef ENABLE_DEEPSLEEP_WAKEUP_EVT
     bool userWakeup = 0;
    #ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
