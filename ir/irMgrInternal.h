@@ -89,6 +89,9 @@ printf(FORMAT, __VA_ARGS__);\
 #endif
 
 
+#if defined _SKQ_KEY_MAP_1_
+typedef void (* uinput_dispatcherScancode_t) (int scanCode, int keyCode, int keyType, int source);
+#endif
 typedef void (* uinput_dispatcher_t) (int keyCode, int keyType, int source);
 
 /** @addtogroup IARM_BUS_IRMGR_INTERNAL_API IARM-Bus IR Manager internal API.
@@ -154,6 +157,11 @@ int UINPUT_init(void);
  * @return NULL if uinput is not available.
  */
 uinput_dispatcher_t UINPUT_GetDispatcher(void);
+
+#if defined _SKQ_KEY_MAP_1_
+uinput_dispatcherScancode_t UINPUT_GetDispatcherScancode(void);
+#endif
+
 /**
  * @brief uinput module term.
  *

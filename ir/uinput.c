@@ -29,7 +29,11 @@
 #include <unistd.h>
 
 #include "irMgrInternal.h"
-#include "IrInputRemoteKeyCodes.h"
+#if defined _SKQ_KEY_MAP_1_
+  #include "IrInputRemoteKeyCodes_SkyQ.h"
+#else
+  #include "IrInputRemoteKeyCodes.h"
+#endif /*End of _SKQ_KEY_MAP_1_*/
 
 
 #define UINPUT_SETUP_ID(uidev) \
@@ -106,6 +110,41 @@ static void udispatcher_internal(int code, int value)
     }
 }
 
+#if defined _SKQ_KEY_MAP_1_
+static void udispatcherScancode_internal(int scancode, int code, int value)
+{
+    int ret = -1;
+    struct input_event ev;
+    memset(&ev, 0, sizeof(ev));
+    gettimeofday(&ev.time, NULL);
+    ev.type = EV_MSC;
+    ev.code = MSC_SCAN;
+    ev.value = scancode;
+    ret = write(devFd, &ev, sizeof(ev));
+    if (ret == sizeof(ev)) {
+        ev.type = EV_KEY;
+        ev.code = code;
+        ev.value = value;
+        ret = write(devFd, &ev, sizeof(ev));
+        if (ret == sizeof(ev)) {
+            /* reuse same timestamp */
+            ev.type = EV_SYN;
+            ev.code = SYN_REPORT;
+            ev.value = 0;
+            ret = write(devFd, &ev, sizeof(ev));
+        }
+        else {
+            perror("uinput write key failed\r\n");
+            UINPUT_term();
+        }
+    }
+    else
+    {
+        perror("uinput write key failed\r\n");
+        UINPUT_term();
+    }
+}
+#endif /*End of _SKQ_KEY_MAP_1_*/
 
 static void udispatcher (int keyCode, int keyType, int source)
 {
@@ -139,6 +178,40 @@ static void udispatcher (int keyCode, int keyType, int source)
     }
 }
 
+#if defined _SKQ_KEY_MAP_1_
+static void udispatcherScancode (int scanCode, int keyCode, int keyType, int source)
+{
+    printf("%s %d uinput received Key code= %d 0x%x  keyType= %d 0x%x \r\n", __FUNCTION__, __LINE__, keyCode, keyCode, keyType, keyType);
+    if (devFd >= 0) {
+        static const char * type2str[] = {"KEY_UP", "KEY_DOWN", "KEY_REPEAT"};
+        uint32_t uCode = _KEY_INVALID;
+        uint32_t uModi = _KEY_INVALID;
+        uint32_t value = 0;
+
+        getKeyCode(keyCode, &uCode, &uModi);
+        value = getKeyValue(keyType);
+        printf("IR-Keyboard Regular Key: IR=%x key=%x Modifier=%x val=%x [%s]\r\n", keyCode, uCode, uModi, value, type2str[value]);
+        /*
+         *  Send Modifier KEY_DOWN and KEY_UP event
+         *  along with keycode's DOWN and UP event.
+         *
+         *  Do not send Modifier on REPEAT event.
+         */
+        if ((keyType == KET_KEYDOWN)) {
+            if (uModi != _KEY_INVALID) {
+                udispatcherScancode_internal(scanCode, uModi, value);
+            }
+        }
+        udispatcherScancode_internal(scanCode, (int)uCode, (int)value);
+        if ((keyType == KET_KEYUP)) {
+            if (uModi != _KEY_INVALID) {
+                udispatcherScancode_internal(scanCode, uModi, value);
+            }
+        }
+    }
+}
+#endif /*End of _SKQ_KEY_MAP_1_*/
+
 int UINPUT_init()
 {
 #ifndef UINPUT_VERSION
@@ -154,6 +227,10 @@ int UINPUT_init()
             //Add event types
             ret = ioctl(fd, UI_SET_EVBIT, EV_KEY);
             ret = ioctl(fd, UI_SET_EVBIT, EV_SYN);
+#if defined _SKQ_KEY_MAP_1_
+            ret = ioctl(fd, UI_SET_EVBIT, EV_MSC);
+            ret = ioctl(fd, UI_SET_MSCBIT, MSC_SCAN);
+#endif /*End of _SKQ_KEY_MAP_1_*/
         }
 
         if (ret == 0)
@@ -216,6 +293,14 @@ uinput_dispatcher_t UINPUT_GetDispatcher(void)
     if (devFd >= 0) return udispatcher;
     else return NULL;
 }
+
+#if defined _SKQ_KEY_MAP_1_
+uinput_dispatcherScancode_t UINPUT_GetDispatcherScancode(void)
+{
+    if (devFd >= 0) return udispatcherScancode;
+    else return NULL;
+}
+#endif
 
 int UINPUT_term()
 {
