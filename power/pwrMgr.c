@@ -1869,7 +1869,17 @@ static gboolean deep_sleep_wakeup_fn(gpointer data)
         param.timeout = deep_sleep_wakeup_timeout_sec;
         IARM_Bus_BroadcastEvent( IARM_BUS_PWRMGR_NAME,
         IARM_BUS_PWRMGR_EVENT_DEEPSLEEP_TIMEOUT, (void *)&param, sizeof(param));
+#if !defined (_DISABLE_SCHD_REBOOT_AT_DEEPSLEEP)
         __TIMESTAMP();LOG("Reboot the box due to Deep Sleep Timer Expiry : %d \r\n", param.timeout);
+#else
+        /*Scheduled maintanace reboot is disabled for XiOne/Llama/Platco. Instead state will change to LIGHT_SLEEP*/
+        IARM_Bus_PWRMgr_SetPowerState_Param_t paramSetPwr;
+        PWRMgr_Settings_t *pSettings = &m_settings;
+        __TIMESTAMP();LOG("deep_sleep_wakeup_fn: Set Device to light sleep on Deep Sleep timer expiry..\r\n");
+        pSettings->powerState = IARM_BUS_PWRMGR_POWERSTATE_STANDBY_DEEP_SLEEP;
+        paramSetPwr.newState = IARM_BUS_PWRMGR_POWERSTATE_STANDBY_LIGHT_SLEEP;
+        _SetPowerState((void *)&paramSetPwr);
+#endif /*End of _DISABLE_SCHD_REBOOT_AT_DEEPSLEEP*/
         return FALSE;
     }
 return TRUE;

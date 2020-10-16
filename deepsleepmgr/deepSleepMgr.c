@@ -172,9 +172,12 @@ static void _eventHandler(const char *owner, IARM_EventId_t eventId, void *data,
         {
             case IARM_BUS_PWRMGR_EVENT_DEEPSLEEP_TIMEOUT:
             {
+#if !defined (_DISABLE_SCHD_REBOOT_AT_DEEPSLEEP)
+                /*Scheduled maintanace reboot is disabled for XiOne/Llama/Platco*/
                 system("echo 0 > /opt/.rebootFlag");
                 system(" echo `/bin/timestamp` ------------- Reboot timer expired while in Deep Sleep --------------- >> /opt/logs/receiver.log");
                 system("sleep 5; /rebootNow.sh -s DeepSleepMgr -o 'Rebooting the box due to reboot timer expired while in Deep Sleep...'");
+#endif /*End of _DISABLE_SCHD_REBOOT_AT_DEEPSLEEP*/
             }
             break;  
 
