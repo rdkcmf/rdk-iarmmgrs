@@ -541,8 +541,16 @@ int checkResetSequence(int keyType, int keyCode)
                     gIsSameKey = true;
                     resetMode = FACTORY;
                     checkResetModeSequence(keyType, keyCode, resetMode);
+#ifndef _DISABLE_RESET_SEQUENCE
                     resetMode = WARE_HOUSE;
                     checkResetModeSequence(keyType, keyCode, resetMode);
+#else
+                    static bool indicatedDisable = false;
+                    if (!indicatedDisable) {
+                        indicatedDisable = true;
+                        LOG("Reset sequence is disabled for Warehouse reset");
+                    }
+#endif
                     resetMode = CUSTOMER;
                     checkResetModeSequence(keyType, keyCode, resetMode);
                     resetMode = PERSONALITY;
