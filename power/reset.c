@@ -171,6 +171,7 @@ typedef struct KeyMap
 #define KEY_COMBINATION_TIMEOUT 2000
 #define POWER_KEY_HOLD_TIME_FOR_REBOOT 10000
 #define POWER_KEY_HOLD_TIME_FOR_RESET 2000
+#define RESET_KEY_HOLD_TIME_FOR_FACTORY_RESET 30000
   
   
 /* Refer  https://www.teamccp.com/confluence/display/CE/Resets.
@@ -451,7 +452,7 @@ int checkResetSequence(int keyType, int keyCode)
             
               //__TIMESTAMP();LOG("Reset : KEY PRESSED keyCode = %d -%d\n",keyCode,KET_KEYDOWN );
                 fflush(stdout);
-                if (!inResetMode && ((keyCode == KED_POWER) || (keyCode == KED_RF_POWER)))
+                if (!inResetMode && ((keyCode == KED_POWER) || (keyCode == KED_RF_POWER) || (keyCode == KED_FACTORY)))
                 {
                     gKeyPressedTime=0;
                     getSystemTime(&gKeyPressedTime);
@@ -463,7 +464,7 @@ int checkResetSequence(int keyType, int keyCode)
         {
             //__TIMESTAMP();LOG("Reset : KEY RELEASED keyCode = %d -%d\n",keyCode,KET_KEYUP);
             fflush(stdout);
-            if (!inResetMode && ((keyCode == KED_POWER) || (keyCode == KED_RF_POWER)))
+            if (!inResetMode && ((keyCode == KED_POWER) || (keyCode == KED_RF_POWER) || (keyCode == KED_FACTORY)))
             {
                 gKeyReleasedTime=0;
                 getSystemTime(&gKeyReleasedTime);
@@ -471,45 +472,63 @@ int checkResetSequence(int keyType, int keyCode)
                 {
                     ResetResetState();//if start time is zero make end also zero. Found a issue with (Downkey event not comes and starttime =0 and endtime >0 TODO
                 }
-                if ((gKeyReleasedTime - gKeyPressedTime) > POWER_KEY_HOLD_TIME_FOR_REBOOT)
+                if ((keyCode == KED_POWER) || (keyCode == KED_RF_POWER))
                 {
-                    __TIMESTAMP();LOG("\n Reset: Inside reset mode 1\n");
-                    fflush(stdout);
-                    PwrMgr_Reset(curPwrState, true);
+                    if ((gKeyReleasedTime - gKeyPressedTime) > POWER_KEY_HOLD_TIME_FOR_REBOOT)
+                    {
+                        __TIMESTAMP();LOG("\n Reset: Inside reset mode 1\n");
+                        fflush(stdout);
+                        PwrMgr_Reset(curPwrState, true);
 
-                    ret = 1; //mark the return value as triggered for reset.
-                    return ret;
+                        ret = 1; //mark the return value as triggered for reset.
+                        return ret;
+                    }
+                    else if ((gKeyReleasedTime - gKeyPressedTime) >= POWER_KEY_HOLD_TIME_FOR_RESET)
+                    {
+                        __TIMESTAMP();LOG("\n Reset: Inside reset mode 2\n");
+                        fflush(stdout);
+                        ResetResetState();
+                        inResetMode = true;
+                    
+                        gCurrentTime=0;
+                        /*Capture the current time to check for that timeout*/
+                        getSystemTime(&gCurrentTime);
+                        gTimeOutValue = INITIAL_TIME_OUT_VALUE;
+                        if (!grabedFocus)
+                        {
+                            /*storeFocus()*/;
+                            grabFocus();
+                            grabedFocus = true;
+                        }
+                        for( i = 0; i < MAX_RESET_MODE_COUNT; i++ )
+                        {
+                            stateMachineList[i]->expectedKeyIndex++;
+                        }
+                        __TIMESTAMP();LOG("\n Reset: FP Power key is pressed for 2 secs");
+                        fflush(stdout);
+                        ret = 1; //mark the return value as triggered for reset.
+                        return ret;
+                    }
+                    else
+                    {
+                        ResetResetState();
+                    }
                 }
-                else if ((gKeyReleasedTime - gKeyPressedTime) >= POWER_KEY_HOLD_TIME_FOR_RESET)
+                else if((gKeyReleasedTime - gKeyPressedTime) >= RESET_KEY_HOLD_TIME_FOR_FACTORY_RESET) //This is a reset key event.
                 {
-                    __TIMESTAMP();LOG("\n Reset: Inside reset mode 2\n");
+                    __TIMESTAMP();LOG("\n Reset: Factory reset through long-pressing reset key\n");
                     fflush(stdout);
-                    ResetResetState();
-                    inResetMode = true;
-                  
-                    gCurrentTime=0;
-                    /*Capture the current time to check for that timeout*/
-                    getSystemTime(&gCurrentTime);
-                    gTimeOutValue = INITIAL_TIME_OUT_VALUE;
-                    if (!grabedFocus)
-                    {
-                        /*storeFocus()*/;
-                        grabFocus();
-                        grabedFocus = true;
-                    }
-                    for( i = 0; i < MAX_RESET_MODE_COUNT; i++ )
-                    {
-                        stateMachineList[i]->expectedKeyIndex++;
-                    }
-                    __TIMESTAMP();LOG("\n Reset: FP Power key is pressed for 2 secs");
-                    fflush(stdout);
-                    ret = 1; //mark the return value as triggered for reset.
+                    processFactoryReset();
+
+                    ret = 1;
                     return ret;
                 }
                 else
                 {
                     ResetResetState();
                 }
+                
+                
             }
             else
             {
