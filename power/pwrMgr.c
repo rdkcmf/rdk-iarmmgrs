@@ -1402,8 +1402,13 @@ static int _SetLEDStatus(IARM_Bus_PWRMgr_PowerState_t powerState)
 
         if( powerState != IARM_BUS_PWRMGR_POWERSTATE_ON )
         {
+#ifdef FP_POWER_LED_ON_IN_LOW_POWER_MODE //For devices like TVs that are expected to have lights on when in one of the standby modes.
+            device::FrontPanelIndicator::getInstance("Power").setState(true); 
+            LOG("[PWRMgr-_SetLEDStatus] Settings the Power LED State to ON\r\n");
+#else
             device::FrontPanelIndicator::getInstance("Power").setState(false); 
-            LOG("[PWRMgr-_SetLEDStatus] Settings the Power LED State to OFF \r\n");              
+            LOG("[PWRMgr-_SetLEDStatus] Settings the Power LED State to OFF \r\n");
+#endif
         }
         else
         {
