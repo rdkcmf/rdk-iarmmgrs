@@ -37,6 +37,7 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include "safec_lib.h"
 
 static char writeImageCbModule[MAX_BUF] = "";
 static char cliName[32];
@@ -44,15 +45,21 @@ static mfrUpgradeStatusNotify_t cb_notify = {0,};
 
 static void _eventHandler(const char *owner, IARM_EventId_t eventId, void *data, size_t len)
 {
-    if ((strcmp(owner, IARM_BUS_MFRLIB_NAME)  == 0) && eventId == IARM_BUS_MFRMGR_EVENT_STATUS_UPDATE)
-    {
+       errno_t safec_rc = -1;
+       int ind = -1;
+
+       safec_rc = strcmp_s(IARM_BUS_MFRLIB_NAME, strlen(IARM_BUS_MFRLIB_NAME), owner, &ind);
+       ERR_CHK(safec_rc);
+       if(((!ind) && (safec_rc == EOK)) && (eventId == IARM_BUS_MFRMGR_EVENT_STATUS_UPDATE))
+       {
+
        IARM_BUS_MfrMgr_StatusUpdate_EventData_t *param = (IARM_BUS_MfrMgr_StatusUpdate_EventData_t *)data;
 
        if(cb_notify.cb)
        {
           cb_notify.cb(param->status, cb_notify.cbData);
-       } 
-    }
+       }
+       }
 }
 
 mfrError_t mfr_init( )
@@ -92,6 +99,7 @@ mfrError_t mfrGetSerializedData( mfrSerializedType_t type, mfrSerializedData_t *
 {
     IARM_Result_t rpcRet;
     IARM_Bus_MFRLib_SerializedData_Param_t param;
+    errno_t safec_rc = -1;
 
     param.type = type;
     param.bufLen = 0;
@@ -99,15 +107,20 @@ mfrError_t mfrGetSerializedData( mfrSerializedType_t type, mfrSerializedData_t *
     data->buf = NULL;
     data->bufLen = 0;
 
+
     if(NULL !=crypto)
     {
-        strcpy(param.crypto,"mfrCrypto_Encrypt");
+        safec_rc = strcpy_s(param.crypto, sizeof(param.crypto), "mfrCrypto_Encrypt");
     }
     else
     {
-    	strcpy(param.crypto,"");
+        safec_rc = strcpy_s(param.crypto, sizeof(param.crypto), "");
     }  
-    
+    if(safec_rc != EOK)
+    {
+        ERR_CHK(safec_rc);
+        return mfrERR_GENERAL;
+    }
     do{
     
         printf("%s: Calling Get Serialized..\n",__func__);
@@ -123,7 +136,14 @@ mfrError_t mfrGetSerializedData( mfrSerializedType_t type, mfrSerializedData_t *
         }
         
         data->buf = (char *) malloc (param.bufLen);
-        memcpy(data->buf,(char *)param.buffer, param.bufLen);
+        safec_rc = memcpy_s(data->buf, param.bufLen, (char *)param.buffer, param.bufLen);
+        if(safec_rc != EOK)
+        {
+            ERR_CHK(safec_rc);
+            if (data->buf)
+                free(dat->buf);
+            return mfrERR_GENERAL;
+        }
         data->bufLen = param.bufLen;
         data->freeBuf = free;
     
@@ -139,19 +159,30 @@ mfrError_t mfrSetSerializedData( mfrSerializedType_t type, mfrSerializedData_t *
 {
     IARM_Result_t rpcRet;
     IARM_Bus_MFRLib_SerializedData_Param_t param;
+    errno_t safec_rc = -1;
     do{
             param.bufLen = (data->bufLen < MAX_SERIALIZED_BUF)?data->bufLen:MAX_SERIALIZED_BUF;
 
             if(NULL !=crypto)
             {
-                strcpy(param.crypto,"mfrCrypto_Decrypt");
+                safec_rc = strcpy_s(param.crypto, sizeof(param.crypto), "mfrCrypto_Decrypt");
             }
-	   		else
-	    	{
-				strcpy(param.crypto,"");
-	    	} 
+            else
+	    {
+	        safec_rc = strcpy_s(param.crypto, sizeof(param.crypto), "");
+	    }
+            if(safec_rc != EOK)
+            {
+                ERR_CHK(safec_rc);
+                return mfrERR_GENERAL;
+            }
             param.type = type;
-            memcpy(((char*)param.buffer), data->buf,param.bufLen);
+            safec_rc = memcpy_s(((char*)param.buffer), sizeof(param.buffer), data->buf, param.bufLen);
+            if(safec_rc != EOK)
+            {
+                ERR_CHK(safec_rc);
+                return mfrERR_GENERAL;
+            }
 
             rpcRet = IARM_Bus_Call(IARM_BUS_MFRLIB_NAME ,
                             (char *)IARM_BUS_MFRLIB_API_SetSerializedData,
@@ -176,9 +207,22 @@ mfrError_t mfrWriteImage(const char *name,  const char *path, mfrImageType_t typ
 {
     IARM_Result_t rpcRet = IARM_RESULT_SUCCESS;
     IARM_Bus_MFRLib_WriteImage_Param_t param;
+    errno_t safec_rc = -1;
 
-    strcpy(param.name,name);
-    strcpy(param.path,path);
+    safec_rc = strcpy_s(param.name, sizeof(param.name), name);
+    if(safec_rc != EOK)
+    {
+        ERR_CHK(safec_rc);
+        return mfrERR_GENERAL;
+    }
+
+    safec_rc = strcpy_s(param.path, sizeof(param.path), path);
+    if(safec_rc != EOK)
+    {
+        ERR_CHK(safec_rc);
+        return mfrERR_GENERAL;
+    }
+
     param.type = type;   
     param.interval = notify.interval;
 
@@ -200,8 +244,15 @@ mfrError_t mfrSetImageWriteProgress(const char * imageName, mfrImageType_t image
 
     IARM_Result_t rpcRet = IARM_RESULT_SUCCESS;
     IARM_Bus_MFRLib_SetImageWriteProgress_Param_t param;
+    errno_t safec_rc = -1;
 
-    strcpy(param.imageName,imageName);
+    safec_rc = strcpy_s(param.imageName, sizeof(param.imageName), imageName);
+    if(safec_rc != EOK)
+    {
+        ERR_CHK(safec_rc);
+        return mfrERR_GENERAL;
+    }
+
     param.imageType = imageType;   
     param.progress = progress;
 
@@ -223,8 +274,16 @@ mfrError_t mfrGetImageWriteProgress(const char * imageName,mfrImageType_t imageT
 
     IARM_Result_t rpcRet = IARM_RESULT_SUCCESS;
     IARM_Bus_MFRLib_GetImageWriteProgress_Param_t param;
+    errno_t safec_rc = -1;
+
     printf("Inside %s  \n",__func__);
-    strcpy(param.imageName,imageName);
+    safec_rc = strcpy_s(param.imageName, sizeof(param.imageName), imageName);
+    if(safec_rc != EOK)
+    {
+        ERR_CHK(safec_rc);
+        return mfrERR_GENERAL;
+    }
+
     param.imageType = imageType;
     rpcRet = IARM_Bus_Call(IARM_BUS_MFRLIB_NAME ,
                             (char *)IARM_BUS_MFRLIB_API_GetImageWriteProgress,
@@ -274,8 +333,15 @@ mfrError_t mfrReboot(const char *imageName)
 
     IARM_Result_t rpcRet = IARM_RESULT_SUCCESS;
     IARM_Bus_MFRLib_Reboot_Param_t param;
+    errno_t safec_rc = -1;
 
-    strcpy(param.imageName,imageName);
+    safec_rc = strcpy_s(param.imageName, sizeof(param.imageName), imageName);
+    if(safec_rc != EOK)
+    {
+        ERR_CHK(safec_rc);
+        return mfrERR_GENERAL;
+    }
+
 
     rpcRet = IARM_Bus_Call(IARM_BUS_MFRLIB_NAME ,
                             (char *)IARM_BUS_MFRLIB_API_Reboot,
@@ -315,8 +381,15 @@ mfrError_t mfrSetHostFirmwareInfo(const mfrHostFirmwareInfo_t *firmwareInfo)
 
     IARM_Result_t rpcRet = IARM_RESULT_SUCCESS;
     IARM_Bus_MFRLib_SetHostFirmwareInfo_Param_t param;
+    errno_t safec_rc = -1;
 
-    strcpy(param.version,firmwareInfo->firmwareVersion);
+    safec_rc = strcpy_s(param.version, sizeof(param.version), firmwareInfo->firmwareVersion);
+    if(safec_rc != EOK)
+    {
+        ERR_CHK(safec_rc);
+        return mfrERR_GENERAL;
+    }
+
     param.day = firmwareInfo-> firmwareDay;   
     param.month = firmwareInfo->firmwareMonth;   
     param.year = firmwareInfo->firmwareYear;   
@@ -338,6 +411,7 @@ mfrError_t mfrGetBootImageName(int bootInstance, char *bootImageName, int *len, 
 
     IARM_Result_t rpcRet = IARM_RESULT_SUCCESS;
     IARM_Bus_MFRLib_GetBootImageName_Param_t param;
+    errno_t safec_rc = -1;
 
 //  strcpy(param.imageName,bootImageName);
     param.bootInstance = bootInstance;   
@@ -351,7 +425,13 @@ mfrError_t mfrGetBootImageName(int bootInstance, char *bootImageName, int *len, 
     if(IARM_RESULT_SUCCESS == rpcRet)
     {
 	*len = param.len;
-	memcpy(bootImageName,param.imageName, *len);
+	safec_rc = memcpy_s(bootImageName, sizeof(param.imageName), param.imageName, param.len);
+        if(safec_rc != EOK)
+        {
+            ERR_CHK(safec_rc);
+            return mfrERR_GENERAL;
+        }
+
 	return mfrERR_NONE;
     }
     return mfrERR_GENERAL;
@@ -361,6 +441,7 @@ mfrError_t mfrGetPathConfiguration(mfrConfigPathType_t type, char *path, int *le
 
     IARM_Result_t rpcRet = IARM_RESULT_SUCCESS;
     IARM_Bus_MFRLib_GetPathConfiguration_Param_t param;
+    errno_t safec_rc = -1;
 
   //strcpy(param.path,path);
     param.type = type;   
@@ -375,7 +456,13 @@ mfrError_t mfrGetPathConfiguration(mfrConfigPathType_t type, char *path, int *le
 	*len = param.len;
 	if(NULL != path)
 	{
-	    memcpy(path, param.path, param.len);
+	    safec_rc = memcpy_s(path, sizeof(param.path), param.path, param.len);
+            if(safec_rc != EOK)
+             {
+                   ERR_CHK(safec_rc);
+                   return mfrERR_GENERAL;
+             }
+
 	    return mfrERR_NONE;
 	}
     }
@@ -387,9 +474,21 @@ mfrError_t mfrGetDFAST2Data(mfrDFAST2Params_t *params)
 
     IARM_Result_t rpcRet = IARM_RESULT_SUCCESS;
     IARM_Bus_MFRLib_GetDFAST2Data_Param_t param;
+    errno_t safec_rc = -1;
 
-    memcpy(param.seedIn,params->seedIn,sizeof(param.seedIn));
-    memcpy(param.keyOut,params->keyOut,sizeof(param.keyOut));
+    safec_rc = memcpy_s(param.seedIn, sizeof(param.seedIn), params->seedIn, sizeof(param.seedIn));
+    if(safec_rc != EOK)
+       {
+           ERR_CHK(safec_rc);
+           return mfrERR_GENERAL;
+       }
+
+    safec_rc = memcpy_s(param.keyOut, sizeof(param.keyOut), params->keyOut, sizeof(param.keyOut));
+    if(safec_rc != EOK)
+       {
+           ERR_CHK(safec_rc);
+           return mfrERR_GENERAL;
+       }
 
     rpcRet = IARM_Bus_Call(IARM_BUS_MFRLIB_NAME ,
                             (char *)IARM_BUS_MFRLIB_API_GetDFAST2Data,

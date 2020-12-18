@@ -37,6 +37,7 @@ extern "C" {
 #ifdef __cplusplus 
 }
 #endif
+#include "safec_lib.h"
 
 #ifdef RDK_LOGGER_ENABLED
 int b_rdk_logger_enabled = 0;
@@ -52,11 +53,16 @@ int main(int argc, char *argv[])
 {
     const char* debugConfigFile = NULL;
     int itr=0;
+    errno_t safec_rc = -1;
+    int ind = -1;
+    int debug_len = strlen("--debugconfig");
 
         while (itr < argc)
         {
-                if(strcmp(argv[itr],"--debugconfig")==0)
-                {
+            safec_rc = strcmp_s( "--debugconfig", debug_len, argv[itr], &ind);
+            ERR_CHK(safec_rc);
+            if ((!ind) && (safec_rc == EOK))
+            {
                         itr++;
                         if (itr < argc)
                         {
@@ -66,7 +72,7 @@ int main(int argc, char *argv[])
                         {
                                 break;
                         }
-                }
+            }
                 itr++;
         }
 

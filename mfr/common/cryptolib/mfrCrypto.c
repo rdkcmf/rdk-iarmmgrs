@@ -33,25 +33,28 @@
 #include <sys/time.h>
 #include <openssl/aes.h>
 #include "mfrCrypto.h"
+#include "safec_lib.h"
 
 #define MFR_CRYPTO_KEY_LENGTH    16
 #define MFR_CRYPTO_IVEC_LENGTH   16
 
-static mfrSerializedData_t serialNumber; 
+static mfrSerializedData_t serialNumber;
 
 static void mfr_create_key(const mfrSerializedData_t * pSerialNumber, unsigned char * keybuf, unsigned char * ivec)
 {// this function should be static
     
     int i = 0, j = 0, k = 0, keylen = pSerialNumber->bufLen;
-    unsigned char normalizedkeybuf[MFR_CRYPTO_KEY_LENGTH];
+    unsigned char normalizedkeybuf[MFR_CRYPTO_KEY_LENGTH] = {0};
     unsigned char refkey[MFR_CRYPTO_KEY_LENGTH] = {0xD6, 0xC1, 0x5C, 0x1E, 0x1D, 0x64, 0x2D, 0x44,
                                                   0x68, 0x5C, 0xCE, 0xA0, 0x8D, 0x9F, 0x85, 0xCB};
     unsigned char digkey[MFR_CRYPTO_KEY_LENGTH] = {0x2D, 0x6C, 0x1B, 0xFB, 0x7B, 0x86, 0x87, 0x35,
                                                   0xD0, 0x81, 0xD9, 0x6D, 0x25, 0x2B, 0xFB, 0xF1};
+    errno_t safec_rc = -1;
+
     if(keylen > MFR_CRYPTO_KEY_LENGTH) keylen = MFR_CRYPTO_KEY_LENGTH;
     if(keylen <= 0) keylen = 1;
-    memset(keybuf           , 0, MFR_CRYPTO_KEY_LENGTH);
-    memset(normalizedkeybuf , 0, MFR_CRYPTO_KEY_LENGTH);
+    safec_rc = memset_s(keybuf, MFR_CRYPTO_KEY_LENGTH, 0, MFR_CRYPTO_KEY_LENGTH);
+    ERR_CHK(safec_rc);
     // normalize the key strength
     for(i = 0, k = 0; i < MFR_CRYPTO_KEY_LENGTH; i+= keylen, k = !k)
     {
@@ -77,14 +80,15 @@ static void mfr_create_key(const mfrSerializedData_t * pSerialNumber, unsigned c
     // create a digested version of the normalized key
     {
         AES_KEY ctx;
-        unsigned char digestkeybuf[MFR_CRYPTO_KEY_LENGTH];
-        unsigned char iv[AES_BLOCK_SIZE];
-        memset(iv, 0, MFR_CRYPTO_IVEC_LENGTH);
-        memset(digestkeybuf, 0, MFR_CRYPTO_KEY_LENGTH);
+        unsigned char digestkeybuf[MFR_CRYPTO_KEY_LENGTH] = {0};
+        unsigned char iv[AES_BLOCK_SIZE] = {0};
         
-        
-        memcpy(digestkeybuf, pSerialNumber->buf, keylen);
-        
+        safec_rc = memcpy_s(digestkeybuf, keylen, pSerialNumber->buf, keylen);
+        if(safec_rc != EOK)
+            {
+               ERR_CHK(safec_rc);
+               return;
+            }
         for(i = 0; i < MFR_CRYPTO_KEY_LENGTH; i+= 1)
         {
             digestkeybuf[i] += (unsigned char)(digkey[i]+refkey[i]);
@@ -101,11 +105,19 @@ static void mfr_create_key(const mfrSerializedData_t * pSerialNumber, unsigned c
 
 mfrError_t mfrCrypto_init( const mfrSerializedData_t * pSerialNumber )
 {
+    errno_t safec_rc = -1;
+
     if((NULL == pSerialNumber) || (NULL == pSerialNumber->buf) || (pSerialNumber->bufLen<= 0))
     {
         return mfrERR_INVALID_PARAM;
     }
-    memcpy(&serialNumber, pSerialNumber, sizeof( mfrSerializedData_t ));
+    safec_rc = memcpy_s(&serialNumber, sizeof( mfrSerializedData_t ), pSerialNumber, sizeof( mfrSerializedData_t ));
+    if(safec_rc != EOK)
+        {
+            ERR_CHK(safec_rc);
+            return mfrERR_INVALID_PARAM;
+        }
+
     return mfrERR_NONE; 
 }
 
@@ -124,6 +136,7 @@ mfrError_t mfrCrypto_Encrypt(const mfrSerializedData_t * pPlainText, mfrSerializ
     int nBytes           = pPlainText->bufLen;
     unsigned char * pbuf = (unsigned char *) pPlainText->buf;
     unsigned char * cbuf = NULL;
+    errno_t safec_rc = -1;
 
     pCipherText->buf = NULL;
     
@@ -137,8 +150,18 @@ mfrError_t mfrCrypto_Encrypt(const mfrSerializedData_t * pPlainText, mfrSerializ
         nBytes = ((nBytes/AES_BLOCK_SIZE)+1)*AES_BLOCK_SIZE;
         pbuf = (unsigned char *)malloc(nBytes);
         if(NULL == pbuf) return mfrERR_GENERAL;
-        memset(pbuf, 0, nBytes);
-        memcpy(pbuf, pPlainText->buf, pPlainText->bufLen);
+        safec_rc = memset_s(pbuf, nBytes, 0, nBytes);
+        ERR_CHK(safec_rc);
+
+        safec_rc = memcpy_s(pbuf, nBytes, pPlainText->buf, pPlainText->bufLen);
+        if(safec_rc != EOK)
+            {
+               ERR_CHK(safec_rc);
+               if (pbuf)
+                   free (pbuf);
+               return mfrERR_GENERAL;
+            }
+
     }
     // allocate output buffer
     pCipherText->buf = (char *)malloc(nBytes);
@@ -192,6 +215,7 @@ mfrError_t mfrCrypto_Decrypt(const mfrSerializedData_t * pCipherText, mfrSeriali
     int nBytes           = pCipherText->bufLen;
     unsigned char * cbuf = (unsigned char *) pCipherText->buf;
     unsigned char * pbuf = NULL;
+    errno_t safec_rc = -1;
 
     pPlainText->buf = NULL;
     
@@ -205,8 +229,18 @@ mfrError_t mfrCrypto_Decrypt(const mfrSerializedData_t * pCipherText, mfrSeriali
         nBytes = ((nBytes/AES_BLOCK_SIZE)+1)*AES_BLOCK_SIZE;
         cbuf = (unsigned char *)malloc(nBytes);
         if(NULL == cbuf) return mfrERR_GENERAL;
-        memset(cbuf, 0, nBytes);
-        memcpy(cbuf, pCipherText->buf, pCipherText->bufLen);
+        safec_rc = memset_s(cbuf, nBytes, 0, nBytes);
+        ERR_CHK(safec_rc);
+
+        safec_rc = memcpy_s(cbuf, nBytes, pCipherText->buf, pCipherText->bufLen);
+        if(safec_rc != EOK)
+            {
+               ERR_CHK(safec_rc);
+               if(cbuf)
+                   free(cbuf);
+               return mfrERR_GENERAL;
+            }
+
     }
     // allocate output buffer
     pPlainText->buf = (char *)malloc(nBytes);

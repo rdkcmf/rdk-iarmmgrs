@@ -34,6 +34,7 @@
 #include "mfrMgr.h"
 #include "mfrTypes.h"
 #include "libIBus.h"
+#include "safec_lib.h"
 
 mfrSerializedType_t getTypeFromMenu();
 
@@ -44,6 +45,7 @@ int main()
 	mfrSerializedType_t type = mfrSERIALIZED_TYPE_MANUFACTURER; 
 	mfrSerializedData_t data;
 	mfrError_t Err;
+        errno_t safec_rc = -1;
 
 	printf("mfrClient Entering %d\r\n", getpid());
 
@@ -77,9 +79,17 @@ int main()
 			printf("mfrgetserializedata failed:: %d \n",Err);
 			goto Error;
 		}
-    	pTmpStr = (char *)malloc(data.bufLen + 1);
-	 	memset(pTmpStr,0,data.bufLen+1);
-		memcpy(pTmpStr,data.buf,data.bufLen);
+                pTmpStr = (char *)malloc(data.bufLen + 1);
+                safec_rc = memset_s(pTmpStr, data.bufLen+1, 0, data.bufLen+1);
+                ERR_CHK(safec_rc);
+		safec_rc = memcpy_s(pTmpStr, data.bufLen+1, data.buf, data.bufLen);
+                if(safec_rc != EOK)
+                {
+                    ERR_CHK(safec_rc);
+                    if(pTmpStr)
+                        free(pTmpStr);
+                    continue;
+                }
 
 		printf("Data length is = %d \r\n",data.bufLen);
 		printf("Serial number is = %s \r\n",pTmpStr);

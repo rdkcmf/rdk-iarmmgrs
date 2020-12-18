@@ -32,6 +32,14 @@
 #include <unistd.h>
 #include <string.h>
 #include "mfrMgr.h"
+#include "safec_lib.h"
+
+#define SAFEC_ERR_CHECK(safec_rc)    if(safec_rc != EOK) {\
+ERR_CHK(safec_rc);\
+goto Error; \
+}
+
+
 IARM_Result_t _callback(void *arg)
 {
     IARM_Bus_MFRLib_CommonAPI_WriteImageCb_Param_t *param = (IARM_Bus_MFRLib_CommonAPI_WriteImageCb_Param_t *)arg;
@@ -43,7 +51,7 @@ int main(int argc, char** argv)
 {
     int i = 0;
     IARM_Bus_MFRLib_WriteImage_Param_t param;
-    
+    errno_t safec_rc = -1;
     if(argc < 3)
     {
         printf("usage is : ./test_writeImage <image_path> <signed_image_name>\n");
@@ -55,13 +63,20 @@ int main(int argc, char** argv)
     IARM_Bus_Connect();
 
 
-    strcpy(param.name,argv[2]);
-    strcpy(param.path,argv[1]);
-    strcpy(param.callerModuleName,"WriteImageTest");
+    safec_rc = strcpy_s(param.name, sizeof(param.name), argv[2]);
+    SAFEC_ERR_CHECK(safec_rc);
+
+    safec_rc = strcpy_s(param.path, sizeof(param.path), argv[1]);
+    SAFEC_ERR_CHECK(safec_rc);
+
+    safec_rc = strcpy_s(param.callerModuleName, sizeof(param.callerModuleName), "WriteImageTest");
+    SAFEC_ERR_CHECK(safec_rc);
+
     param.interval = 2;
     param.type = mfrIMAGE_TYPE_CDL;
-    strcpy(param.cbData,"Test Success");
-    
+    safec_rc = strcpy_s(param.cbData, sizeof(param.cbData), "Test Success");
+    SAFEC_ERR_CHECK(safec_rc);
+
     if(IARM_RESULT_SUCCESS == IARM_Bus_RegisterCall(IARM_BUS_MFRLIB_COMMON_API_WriteImageCb,_callback))
     {
         printf("Register Call Success...\n");
@@ -83,6 +98,7 @@ int main(int argc, char** argv)
         sleep(1);
     }
 
+Error:
     IARM_Bus_Disconnect();
     IARM_Bus_Term();
     printf("Client Exiting\r\n");

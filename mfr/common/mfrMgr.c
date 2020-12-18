@@ -34,7 +34,8 @@
 #include "mfrMgr.h"
 #include "libIARMCore.h"
 #include "mfrTypes.h"
- #include "nxclient.h"
+#include "nxclient.h"
+#include "safec_lib.h"
 
 IARM_Result_t MFRLib_Start(void)
 {
@@ -43,7 +44,13 @@ IARM_Result_t MFRLib_Start(void)
     NxClient_AllocSettings allocSettings;
     int rc;
     NxClient_GetDefaultJoinSettings(&joinSettings);
-    snprintf(joinSettings.name, NXCLIENT_MAX_NAME, "%s", "MFRMgr\0");
+    errno_t safec_rc = -1;
+    safec_rc = strcpy_s(joinSettings.name, sizeof(joinSettings.name), "MFRMgr");
+    if(safec_rc != EOK)
+    {
+        ERR_CHK(safec_rc);
+        return IARM_RESULT_INVALID_PARAM;
+    }
     printf("register nxclient MFRMgr\r\n");
     rc = NxClient_Join(&joinSettings);
     printf("register nxclient MFR  Mgr - %d\r\n",rc);

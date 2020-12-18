@@ -40,6 +40,8 @@
 #include <dlfcn.h>
 #include <unistd.h>
 #include "libIARMCore.h"
+#include "safec_lib.h"
+
 static int m_initialized =0;
 static pthread_mutex_t mfrLock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -166,6 +168,7 @@ IARM_Result_t _mfr_init(void *arg)
 {
     IARM_Result_t retVal = IARM_RESULT_IPCCORE_FAIL;
     IARM_Bus_Lock(lock);
+    errno_t safec_rc = -1;
 
     if ( !m_initialized)
     {
@@ -204,7 +207,15 @@ IARM_Result_t _mfr_init(void *arg)
                     mfrError_t err;
 		    retVal = IARM_RESULT_IPCCORE_FAIL;
 		    data.buf = (char *)malloc(param.bufLen);
-		    memcpy(data.buf,param.buffer,param.bufLen);
+		    safec_rc = memcpy_s(data.buf, param.bufLen, param.buffer, param.bufLen);
+                    if(safec_rc != EOK)
+                        {
+                            ERR_CHK(safec_rc);
+                            if (data.buf)
+                                free(data.buf);
+                            IARM_Bus_Unlock(lock);
+                            return IARM_RESULT_INVALID_PARAM;
+                        }
 		    data.freeBuf = free;
 		    err = func(&data);
 		    if(err != mfrERR_NONE)
@@ -234,6 +245,8 @@ IARM_Result_t _mfr_init(void *arg)
 IARM_Result_t _mfrGetSerializedData(void *arg)
 {
     IARM_Result_t retCode = IARM_RESULT_INVALID_STATE;
+    errno_t safec_rc = -1;
+    int ind = -1;
 #ifndef RDK_MFRLIB_NAME
     printf("Please define RDK_MFRLIB_NAME\r\n");
     printf("Exiting %s\n",__func__);
@@ -256,7 +269,10 @@ IARM_Result_t _mfrGetSerializedData(void *arg)
 	mfrCrypto_Encrypt_t *func_ptr = NULL; 
 	mfrError_t err;
 	IARM_Bus_MFRLib_SerializedData_Param_t *param = (IARM_Bus_MFRLib_SerializedData_Param_t*) arg;
-	if(strcmp(param->crypto,"") != 0)
+
+        safec_rc = strcmp_s(param->crypto, strlen(param->crypto), "", &ind);
+        ERR_CHK(safec_rc);
+        if((safec_rc == EOK) && ind))
 	{
 	    if(encrypt_func == 0)
 	    {
@@ -276,7 +292,17 @@ IARM_Result_t _mfrGetSerializedData(void *arg)
 
 	    int max_len = MAX_SERIALIZED_BUF;
 	    max_len = (max_len < data.bufLen)? max_len:data.bufLen;
-	    memcpy(((char *)param->buffer), data.buf, max_len);
+	    safec_rc = memcpy_s(((char *)param->buffer), sizeof(param->buffer), data.buf, max_len);
+            if(safec_rc != EOK)
+            {
+               ERR_CHK(safec_rc);
+               if (data.freebuf)
+               {
+                   data.freebuf(data.buf);
+               }
+               IARM_Bus_Unlock(lock);
+               return IARM_RESULT_INVALID_PARAM;
+            }
 	    param->bufLen = max_len;
 
 	    if(data.freeBuf)
@@ -303,6 +329,9 @@ IARM_Result_t _mfrSetSerializedData(void *arg)
 #else
     static mfrSetSerializedData_t func = 0;
     static mfrCrypto_Decrypt_t decrypt_func = 0;
+    errno_t safec_rc = -1;
+    int ind = -1;
+
     IARM_Bus_Lock(lock);
     printf("In %s\n",__func__);
     if (func == 0) 
@@ -315,8 +344,10 @@ IARM_Result_t _mfrSetSerializedData(void *arg)
 	mfrCrypto_Decrypt_t *func_ptr = NULL; 
 	mfrError_t err;
 	IARM_Bus_MFRLib_SerializedData_Param_t *param = (IARM_Bus_MFRLib_SerializedData_Param_t*) arg;
-	if(strcmp(param->crypto,"") != 0)
-	{
+        safec_rc = strcmp_s(param->crypto, strlen(param->crypto), "", &ind);
+        ERR_CHK(safec_rc);
+        if((safec_rc == EOK) && ind)
+        {
 	    if(decrypt_func == 0)
 	    {
 		decrypt_func = (mfrCrypto_Decrypt_t) find_func(RDK_MFRCRYPTOLIB_NAME, param->crypto);
@@ -333,8 +364,15 @@ IARM_Result_t _mfrSetSerializedData(void *arg)
 	data.buf = (char *) malloc (param->bufLen);
 	data.bufLen = param->bufLen;
 	data.freeBuf = free;
-	memcpy(data.buf,((char *)param->buffer), param->bufLen);
-
+	safec_rc = memcpy_s(data.buf, param->bufLen, ((char *)param->buffer), param->bufLen);
+        if(safec_rc != EOK)
+            {
+               ERR_CHK(safec_rc);
+               if (data.buf)
+                   free(data.buf);
+               IARM_Bus_Unlock(lock);
+               return IARM_RESULT_INVALID_PARAM;
+            }
 	err = func(param->type, &data, func_ptr); 	
         if(mfrERR_NONE == err)
         {
@@ -726,6 +764,7 @@ IARM_Result_t _mfrSetHostFirmwareInfo(void *arg)
     return IARM_RESULT_INVALID_STATE;
 #else
     static mfrSetHostFirmwareInfo_t func = 0;
+    errno_t safec_rc = -1;
 
     IARM_Bus_Lock(lock);
     if (func == 0) 
@@ -752,8 +791,13 @@ IARM_Result_t _mfrSetHostFirmwareInfo(void *arg)
 	host_firmware_info.firmwareDay = pParam->day;
 	host_firmware_info.firmwareMonth = pParam->month;
 	host_firmware_info.firmwareYear = pParam->year;
-	memcpy(&(host_firmware_info.firmwareVersion), pParam->version, MFR_MAX_STR_SIZE);
- 
+	safec_rc = memcpy_s(&(host_firmware_info.firmwareVersion), sizeof(host_firmware_info.firmwareVersion), pParam->version, sizeof(host_firmware_info.firmwareVersion));
+        if(safec_rc != EOK)
+            {
+               ERR_CHK(safec_rc);
+               IARM_Bus_Unlock(lock);
+               return IARM_RESULT_INVALID_PARAM;
+            }
         err = func(&host_firmware_info);
         if(mfrERR_NONE == err)
         {
@@ -861,6 +905,7 @@ IARM_Result_t _mfrGetDFAST2Data(void *arg)
     return IARM_RESULT_INVALID_STATE;
 #else
     static mfrGetDFAST2Data_t func = 0;
+    errno_t safec_rc = -1;
 
     IARM_Bus_Lock(lock);
     if (func == 0) 
@@ -884,8 +929,13 @@ IARM_Result_t _mfrGetDFAST2Data(void *arg)
 	IARM_Bus_MFRLib_GetDFAST2Data_Param_t *pParam = (IARM_Bus_MFRLib_GetDFAST2Data_Param_t *)arg;
 	mfrDFAST2Params_t dfast_params;
 
-	memcpy(&dfast_params,pParam,sizeof(mfrDFAST2Params_t));
-
+	safec_rc = memcpy_s(&dfast_params,sizeof(mfrDFAST2Params_t), pParam,sizeof(mfrDFAST2Params_t));
+        if(safec_rc != EOK)
+            {
+               ERR_CHK(safec_rc);
+               IARM_Bus_Unlock(lock);
+               return IARM_RESULT_INVALID_PARAM;
+            }
         err = func(&dfast_params);
         if(mfrERR_NONE == err)
         {

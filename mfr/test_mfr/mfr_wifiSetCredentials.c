@@ -32,12 +32,19 @@
 #include <unistd.h>
 #include <string.h>
 #include "mfrMgr.h"
+#include "safec_lib.h"
+
+#define SAFEC_ERR_CHECK(safec_rc)      if(safec_rc != EOK) {\
+ERR_CHK(safec_rc); \
+goto Error; \
+}
 
 int main(int argc, char** argv)
 {
 #ifdef ENABLE_MFR_WIFI
     int i = 0;
     IARM_BUS_MFRLIB_API_WIFI_Credentials_Param_t param;
+    errno_t safec_rc = -1;
 
     if(argc < 3)
     {
@@ -50,8 +57,11 @@ int main(int argc, char** argv)
     IARM_Bus_Connect();
 
     param.requestType=WIFI_SET_CREDENTIALS;
-    strcpy(param.wifiCredentials.cSSID,argv[1]);
-    strcpy(param.wifiCredentials.cPassword,argv[2]);
+    safec_rc = strcpy_s(param.wifiCredentials.cSSID, sizeof(param.wifiCredentials.cSSID), argv[1]);
+    SAFEC_ERR_CHECK(safec_rc);
+
+    safec_rc = strcpy_s(param.wifiCredentials.cPassword, sizeof(param.wifiCredentials.cPassword), argv[2]);
+    SAFEC_ERR_CHECK(safec_rc);
 
     if(IARM_RESULT_SUCCESS == IARM_Bus_Call(IARM_BUS_MFRLIB_NAME,IARM_BUS_MFRLIB_API_WIFI_Credentials,(void *)&param,sizeof(param)))
     {
@@ -66,6 +76,7 @@ int main(int argc, char** argv)
         sleep(1);
     }
 
+Error:
     IARM_Bus_Disconnect();
     IARM_Bus_Term();
     printf("Client Exiting\r\n");

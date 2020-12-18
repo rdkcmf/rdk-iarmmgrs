@@ -34,6 +34,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include "safec_lib.h"
 
 int main()
 {
@@ -44,6 +45,7 @@ int main()
 	printf("mfrClient Entering %d\r\n", getpid());
 	IARM_Bus_Init("mfrClient");
 	int i = 0;
+	errno_t safec_rc = -1;
 	IARM_Bus_Connect();
 
 	do{
@@ -62,8 +64,16 @@ int main()
 		{
 			len = param->bufLen + 1;
 			pTmpStr = (char *)malloc(len);
-			memset(pTmpStr,0,len);
-			memcpy(pTmpStr,param->buffer,param->bufLen);
+			safec_rc = memset_s(pTmpStr, len, 0, len);
+			ERR_CHK(safec_rc);
+			safec_rc = memcpy_s(pTmpStr, len, param->buffer, param->bufLen);
+			if(safec_rc != EOK)
+			{
+				ERR_CHK(safec_rc);
+				free(pTmpStr);
+				continue;
+			}
+
 			printf("%s returned (%d)::%s ","mfrSERIALIZED_TYPE_MANUFACTURER",ret, pTmpStr);
 			free(pTmpStr);
 		}
@@ -83,8 +93,16 @@ int main()
 		{
 			len = param->bufLen + 1;
 			pTmpStr = (char *)malloc(len);
-			memset(pTmpStr,0,len);
-			memcpy(pTmpStr,param->buffer,param->bufLen);
+			safec_rc = memset_s(pTmpStr, len, 0, len);
+			ERR_CHK(safec_rc);
+			safec_rc = memcpy_s(pTmpStr, len, param->buffer, param->bufLen);
+			if(safec_rc != EOK)
+			{
+				ERR_CHK(safec_rc);
+				free(pTmpStr);
+				continue;
+			}
+
 			printf("%s returned (%d)::%s","mfrSERIALIZED_TYPE_MANUFACTUREROUI",ret,pTmpStr);
 			free(pTmpStr);
 		}
@@ -103,8 +121,16 @@ int main()
 		{
 			len = param->bufLen + 1;
 			pTmpStr = (char *)malloc(len);
-			memset(pTmpStr,0,len);
-			memcpy(pTmpStr,param->buffer,param->bufLen);
+			safec_rc = memset_s(pTmpStr, len, 0, len);
+			ERR_CHK(safec_rc);
+			safec_rc = memcpy_s(pTmpStr, len, param->buffer, param->bufLen);
+			if(safec_rc != EOK)
+			{
+				ERR_CHK(safec_rc);
+				free(pTmpStr);
+				continue;
+			}
+
 			printf("%s returned (%d)::%s","mfrSERIALIZED_TYPE_MODELNAME",ret,pTmpStr);
 			free(pTmpStr);
 		}
@@ -124,8 +150,16 @@ int main()
 		{
 			len = param->bufLen + 1;
 			pTmpStr = (char *)malloc(len);
-			memset(pTmpStr,0,len);
-			memcpy(pTmpStr,param->buffer,param->bufLen);
+			safec_rc = memset_s(pTmpStr, len, 0, len);
+			ERR_CHK(safec_rc);
+			safec_rc = memcpy_s(pTmpStr, len, param->buffer, param->bufLen);
+			if(safec_rc != EOK)
+			{
+				ERR_CHK(safec_rc);
+				free(pTmpStr);
+				continue;
+			}
+
 			printf("%s returned (%d)::%s","mfrSERIALIZED_TYPE_DESCRIPTION",ret,pTmpStr);
 			free(pTmpStr);
 		}			
@@ -144,8 +178,16 @@ int main()
 		{
 			len = param->bufLen + 1;
 			pTmpStr = (char *)malloc(len);
-			memset(pTmpStr,0,len);
-			memcpy(pTmpStr,param->buffer,param->bufLen);
+			safec_rc = memset_s(pTmpStr, len, 0, len);
+			ERR_CHK(safec_rc);
+			safec_rc = memcpy_s(pTmpStr, len, param->buffer, param->bufLen);
+			if(safec_rc != EOK)
+			{
+				ERR_CHK(safec_rc);
+				free(pTmpStr);
+				continue;
+			}
+
 			printf("%s returned (%d)::%s","mfrSERIALIZED_TYPE_PRODUCTCLASS",ret,pTmpStr);
 			free(pTmpStr);
 		}
@@ -164,8 +206,16 @@ int main()
 		{
 			len = param->bufLen + 1;
 			pTmpStr = (char *)malloc(len);
-			memset(pTmpStr,0,len);
-			memcpy(pTmpStr,param->buffer,param->bufLen);
+			safec_rc = memset_s(pTmpStr, len, 0, len);
+			ERR_CHK(safec_rc);
+			safec_rc = memcpy_s(pTmpStr, len, param->buffer, param->bufLen);
+			if(safec_rc != EOK)
+			{
+				ERR_CHK(safec_rc);
+				free(pTmpStr);
+				continue;
+			}
+
 			printf("%s returned (%d)::%s","mfrSERIALIZED_TYPE_SERIALNUMBER",ret,pTmpStr);
 			free(pTmpStr);
 		}
@@ -185,8 +235,16 @@ int main()
 		{
 			len = param->bufLen + 1;
 			pTmpStr = (char *)malloc(len);
-			memset(pTmpStr,0,len);
-			memcpy(pTmpStr,param->buffer,param->bufLen);
+			safec_rc = memset_s(pTmpStr, len, 0, len);
+			ERR_CHK(safec_rc);
+			safec_rc = memcpy_s(pTmpStr, len, param->buffer, param->bufLen);
+			if(safec_rc != EOK)
+			{
+				ERR_CHK(safec_rc);
+				free(pTmpStr);
+				continue;
+			}
+
 			printf("%s returned (%d)::%s","mfrSERIALIZED_TYPE_HARDWAREVERSION",ret,pTmpStr);
 			free(pTmpStr);
 		}
@@ -205,8 +263,16 @@ int main()
 		{
 			len = param->bufLen + 1;
 			pTmpStr = (char *)malloc(len);
-			memset(pTmpStr,0,len);
-			memcpy(pTmpStr,param->buffer,param->bufLen);
+			safec_rc = memset_s(pTmpStr, len, 0, len);
+			ERR_CHK(safec_rc);
+			safec_rc = memcpy_s(pTmpStr, len, param->buffer, param->bufLen);
+			if(safec_rc != EOK)
+			{
+				ERR_CHK(safec_rc);
+				free(pTmpStr);
+				continue;
+			}
+
 			printf("%s returned (%d)::%s","mfrSERIALIZED_TYPE_SOFTWAREVERSION",ret,pTmpStr);
 			free(pTmpStr);
 		}
@@ -225,8 +291,16 @@ int main()
 		{
 			len = param->bufLen + 1;
 			pTmpStr = (char *)malloc(len);
-			memset(pTmpStr,0,len);
-			memcpy(pTmpStr,param->buffer,param->bufLen);
+			safec_rc = memset_s(pTmpStr, len, 0, len);
+			ERR_CHK(safec_rc);
+			safec_rc = memcpy_s(pTmpStr, len, param->buffer, param->bufLen);
+			if(safec_rc != EOK)
+			{
+				ERR_CHK(safec_rc);
+				free(pTmpStr);
+				continue;
+			}
+
 			printf("%s returned (%d)::%s","mfrSERIALIZED_TYPE_PROVISIONINGCODE",ret,pTmpStr);
 			free(pTmpStr);
 		}
@@ -245,8 +319,16 @@ int main()
 		{
 			len = param->bufLen + 1;
 			pTmpStr = (char *)malloc(len);
-			memset(pTmpStr,0,len);
-			memcpy(pTmpStr,param->buffer,param->bufLen);
+			safec_rc = memset_s(pTmpStr, len, 0, len);
+			ERR_CHK(safec_rc);
+			safec_rc = memcpy_s(pTmpStr, len, param->buffer, param->bufLen);
+			if(safec_rc != EOK)
+			{
+				ERR_CHK(safec_rc);
+				free(pTmpStr);
+				continue;
+			}
+
 			printf("%s returned (%d)::%s","mfrSERIALIZED_TYPE_FIRSTUSEDATE",ret, pTmpStr);
 			free(pTmpStr);
 		}
@@ -265,8 +347,16 @@ int main()
 		{
 			len = param->bufLen + 1;
 			pTmpStr = (char *)malloc(len);
-			memset(pTmpStr,0,len);
-			memcpy(pTmpStr,param->buffer,param->bufLen);
+			safec_rc = memset_s(pTmpStr, len, 0, len);
+			ERR_CHK(safec_rc);
+			safec_rc = memcpy_s(pTmpStr, len, param->buffer, param->bufLen);
+			if(safec_rc != EOK)
+			{
+				ERR_CHK(safec_rc);
+				free(pTmpStr);
+				continue;
+			}
+
 			printf("%s returned (%d)::[%s]\r\n","mfrSERIALIZED_TYPE_PDRIVERSION",ret, pTmpStr);
 			free(pTmpStr);
 		}

@@ -34,6 +34,7 @@
 #include "mfrMgrInternal.h"
 #include "mfrMgr.h"
 #include "libIARMCore.h"
+#include "safec_lib.h"
 
 static int is_connected = 0;
 
@@ -48,12 +49,24 @@ static IARM_Result_t getSerializedData_(void *arg)
     IARM_Bus_MFRLib_GetSerializedData_Param_t *param = (IARM_Bus_MFRLib_GetSerializedData_Param_t *)arg;
     mfrError_t err = mfrERR_NONE;
     mfrSerializedData_t data;
-    
+    errno_t safec_rc = -1;
+
     err = mfrGetSerializedData((mfrSerializedType_t)(param->type), &(data));
 
     if(mfrERR_NONE == err)
     {
-        memcpy(param->buffer,data.buf,data.bufLen); 
+        safec_rc = memcpy_s(param->buffer, sizeof(param->buffer), data.buf, data.bufLen);
+
+        if(safec_rc != EOK)
+            {
+                ERR_CHK(safec_rc);
+                if(data.freeBuf)
+                    {
+                        data.freeBuf(data.buf);
+                    }
+                return IARM_RESULT_INVALID_PARAM;
+            }
+
         param->bufLen = data.bufLen;
         if(data.freeBuf)
         {
@@ -211,10 +224,24 @@ static IARM_Result_t mfrWifiCredentials_(void *arg)
     IARM_BUS_MFRLIB_API_WIFI_Credentials_Param_t *param = (IARM_BUS_MFRLIB_API_WIFI_Credentials_Param_t *)arg;
     WIFI_API_RESULT err = WIFI_API_RESULT_SUCCESS;
     WIFI_DATA data;
+    errno_t safec_rc = -1;
+
     if (param->requestType == WIFI_SET_CREDENTIALS)
     {
-            strcpy(data.cSSID,param->wifiCredentials.cSSID);
-            strcpy(data.cPassword,param->wifiCredentials.cPassword);
+            safec_rc = strcpy_s(data.cSSID, sizeof(data.cSSID), param->wifiCredentials.cSSID);
+            if(safec_rc != EOK)
+            {
+                ERR_CHK(safec_rc);
+                return IARM_RESULT_INVALID_PARAM;
+            }
+
+            safec_rc = strcpy_s(data.cPassword, sizeof(data.cPassword), param->wifiCredentials.cPassword);
+            if(safec_rc != EOK)
+            {
+                ERR_CHK(safec_rc);
+                return IARM_RESULT_INVALID_PARAM;
+            }
+
             LOG("WIFI_SetCredentials ssid = %s \r\n", param->wifiCredentials.cSSID);
             err = WIFI_SetCredentials(&(data));
             if(WIFI_API_RESULT_SUCCESS  == err)
@@ -230,8 +257,20 @@ static IARM_Result_t mfrWifiCredentials_(void *arg)
 
         if(WIFI_API_RESULT_SUCCESS  == err)
         {
-            strcpy(param->wifiCredentials.cSSID,data.cSSID);
-            strcpy(param->wifiCredentials.cPassword,data.cPassword);
+            safec_rc = strcpy_s(param->wifiCredentials.cSSID, sizeof(param->wifiCredentials.cSSID), data.cSSID);
+            if(safec_rc != EOK)
+            {
+                ERR_CHK(safec_rc);
+                return IARM_RESULT_INVALID_PARAM;
+            }
+
+            safec_rc = strcpy_s(param->wifiCredentials.cPassword, sizeof(param->wifiCredentials.cPassword), data.cPassword);
+            if(safec_rc != EOK)
+            {
+                ERR_CHK(safec_rc);
+                return IARM_RESULT_INVALID_PARAM;
+            }
+
             retCode=IARM_RESULT_SUCCESS;
             LOG("WIFI_GetCredentials ssid = %s \r\n", data.cSSID);
         }
@@ -246,6 +285,7 @@ static IARM_Result_t mfrWifiCredentials_(void *arg)
 static void writeImageCb(mfrUpgradeStatus_t status, void *cbData)
 {
     IARM_Bus_MFRLib_CommonAPI_WriteImageCb_Param_t param;
+    errno_t safec_rc = -1;
 
     param.status = status;
 
@@ -253,7 +293,13 @@ static void writeImageCb(mfrUpgradeStatus_t status, void *cbData)
 
     if(cbData)
     {
-         memcpy(param.cbData,cbData, MAX_BUF);
+         safec_rc = memcpy_s(param.cbData, sizeof(param.cbData), cbData, sizeof(param.cbData));
+         if(safec_rc != EOK)
+            {
+                ERR_CHK(safec_rc);
+                return;
+            }
+
     } 
 
     IARM_Bus_Call(writeImageCbModule,IARM_BUS_MFRLIB_COMMON_API_WriteImageCb, &param, sizeof(IARM_Bus_MFRLib_CommonAPI_WriteImageCb_Param_t)); 
@@ -297,7 +343,7 @@ static IARM_Result_t writeImage_(void *arg)
 
     IARM_Result_t retCode = IARM_RESULT_INVALID_STATE;
     mfrError_t err = mfrERR_NONE;
-
+    errno_t safec_rc = -1;
     if (func) {
 
         IARM_Bus_MFRLib_WriteImage_Param_t *pParam = (IARM_Bus_MFRLib_WriteImage_Param_t *) arg;
@@ -308,7 +354,12 @@ static IARM_Result_t writeImage_(void *arg)
         notifyStruct.interval = pParam->interval;
         notifyStruct.cb = writeImageCb;
 
-        strcpy(writeImageCbModule, pParam->callerModuleName);
+        safec_rc = strcpy_s(writeImageCbModule, sizeof(writeImageCbModule),pParam->callerModuleName);
+        if(safec_rc != EOK)
+            {
+                ERR_CHK(safec_rc);
+                return IARM_RESULT_INVALID_PARAM;
+            }
 
         lastStatus.progress = mfrUPGRADE_PROGRESS_NOT_STARTED;
    
