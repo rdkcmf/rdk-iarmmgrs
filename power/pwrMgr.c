@@ -42,7 +42,7 @@ extern "C"
 #ifdef __cplusplus
 }
 #endif
-
+#include <sys/stat.h>
 #include "iarmUtil.h"
 #include "irMgr.h"
 #include "sysMgr.h"
@@ -218,7 +218,7 @@ static IARM_Result_t _SetStandbyVideoState(void *arg);
 static IARM_Result_t _GetStandbyVideoState(void *arg);
 static int ecm_connectivity_lost = 0;
 time_t xre_timer; // Hack to fix DELIA-11393
-
+static bool deepSleepWakeup = false;
 extern void IARM_Bus_PWRMGR_RegisterSleepTimerAPIs(void *);
 
 /*EAS handling */
@@ -375,6 +375,8 @@ IARM_Result_t PWRMgr_Start(int argc, char *argv[])
         isCecLocalLogicEnabled= true;
         LOG("pwrMgr:RFC CEC Local Logic feature enabled \r\n");
     }
+    char *rdk_deep_sleep_wakeup = getenv("RDK_DEEPSLEEP_WAKEUP_ON_POWER_BUTTON");
+    deepSleepWakeup = (rdk_deep_sleep_wakeup && atoi(rdk_deep_sleep_wakeup));
 
 	return IARM_RESULT_SUCCESS;
 }
@@ -758,7 +760,11 @@ static void _irEventHandler(const char *owner, IARM_EventId_t eventId, void *dat
 	                    IARM_Bus_PWRMgr_SetPowerState_Param_t param;
 	                    param.newState = newState;
                             param.keyCode = keyCode;
-                        int doNothandlePowerKey = ((disableKeyPowerOff) && (curState == IARM_BUS_PWRMGR_POWERSTATE_ON) && (newState != IARM_BUS_PWRMGR_POWERSTATE_ON));
+			int doNothandlePowerKey = ((disableKeyPowerOff) && (curState == IARM_BUS_PWRMGR_POWERSTATE_ON) && (newState != IARM_BUS_PWRMGR_POWERSTATE_ON));
+                        if ((deepSleepWakeup) && (curState != IARM_BUS_PWRMGR_POWERSTATE_STANDBY_DEEP_SLEEP) && (keyCode != KED_FP_POWER)){
+                            doNothandlePowerKey = 1;
+                            LOG("RDK_DEEPSLEEP_WAKEUP_ON_POWER_BUTTON is set, power-ON only from DEEPSLEEP\r\n");
+                        }
 
 #ifdef _ENABLE_FP_KEY_SENSITIVITY_IMPROVEMENT
                             if (doNothandlePowerKey) {
@@ -1104,6 +1110,7 @@ static int _InitSettings(const char *settingsFile)
 
     int ret = open(settingsFile, O_CREAT|O_RDWR, S_IRWXU|S_IRUSR);
     int fd = ret;
+    struct stat buf;
 
     if (fd >= 0) {
 
@@ -1171,6 +1178,13 @@ static int _InitSettings(const char *settingsFile)
                                #ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
                                    nwStandbyMode_gs = pSettings->nwStandbyMode;
                                     __TIMESTAMP();LOG("Persisted network standby mode is: %s \r\n", nwStandbyMode_gs?("Enabled"):("Disabled"));
+			       #endif
+			       #ifdef PLATCO_BOOTTO_STANDBY
+				   if(stat("/tmp/pwrmgr_restarted",&buf) != 0)
+				   {
+					pSettings->powerState = IARM_BUS_PWRMGR_POWERSTATE_STANDBY;
+					__TIMESTAMP();LOG("Setting default powerstate to standby in Platco\n\r");
+				   }
                                #endif
                            }
 						}
@@ -1197,6 +1211,10 @@ static int _InitSettings(const char *settingsFile)
                                #endif 
                                #ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
                                    pSettings->nwStandbyMode = nwStandbyMode_gs;
+			       #endif
+			       #ifdef PLATCO_BOOTTO_STANDBY
+				   if(stat("/tmp/pwrmgr_restarted",&buf) != 0)
+					   pSettings->powerState = IARM_BUS_PWRMGR_POWERSTATE_STANDBY;
                                #endif
                               pSettings->length = (sizeof(PWRMgr_Settings_t) - PADDING_SIZE );
                                 LOG("[PwrMgr] Write PwrMgr Settings File With Current Data Length %d \r\n",pSettings->length);
@@ -1276,6 +1294,10 @@ static int _InitSettings(const char *settingsFile)
             #endif
             #ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
                 pSettings->nwStandbyMode = nwStandbyMode_gs;
+	    #endif
+	    #ifdef PLATCO_BOOTTO_STANDBY
+		if(stat("/tmp/pwrmgr_restarted",&buf) != 0)
+			pSettings->powerState = IARM_BUS_PWRMGR_POWERSTATE_STANDBY;
             #endif
             ret = write(fd, pSettings, pSettings->length);
             if (ret < 0) {
