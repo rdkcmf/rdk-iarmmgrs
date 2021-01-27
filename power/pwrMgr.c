@@ -761,7 +761,7 @@ static void _irEventHandler(const char *owner, IARM_EventId_t eventId, void *dat
 	                    param.newState = newState;
                             param.keyCode = keyCode;
 			int doNothandlePowerKey = ((disableKeyPowerOff) && (curState == IARM_BUS_PWRMGR_POWERSTATE_ON) && (newState != IARM_BUS_PWRMGR_POWERSTATE_ON));
-                        if ((deepSleepWakeup) && (curState != IARM_BUS_PWRMGR_POWERSTATE_STANDBY_DEEP_SLEEP) && (keyCode != KED_FP_POWER)){
+                        if ((deepSleepWakeup) && (curState != IARM_BUS_PWRMGR_POWERSTATE_STANDBY_DEEP_SLEEP)){
                             doNothandlePowerKey = 1;
                             LOG("RDK_DEEPSLEEP_WAKEUP_ON_POWER_BUTTON is set, power-ON only from DEEPSLEEP\r\n");
                         }
