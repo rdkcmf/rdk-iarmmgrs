@@ -61,7 +61,7 @@ extern "C"
 #include "resetModes.h"
 #include "rfcapi.h"
 #include "iarmcec.h"
-
+#include "deepSleepMgr.h"
 /* For glib APIs*/
 #include <glib.h>
 
@@ -832,6 +832,17 @@ static IARM_Result_t _SetPowerState(void *arg)
        if(  (IARM_BUS_PWRMGR_POWERSTATE_STANDBY_DEEP_SLEEP == curState)
         && (IARM_BUS_PWRMGR_POWERSTATE_STANDBY_DEEP_SLEEP != newState))
         {
+            IARM_Result_t rpcRet = IARM_RESULT_SUCCESS;
+            int dsStatus= 0;
+            rpcRet = IARM_Bus_Call(IARM_BUS_DEEPSLEEPMGR_NAME,
+                            (char *)"GetDeepSleepStatus",
+                            (void *)&dsStatus,
+                            sizeof(dsStatus));
+            if((DeepSleepStatus_InProgress == dsStatus) || (IARM_RESULT_SUCCESS != rpcRet))
+            {
+                LOG("%s  deepsleep in  progress  ignoreing the request dsStatus %d rpcRet :%d\r\n",__FUNCTION__,dsStatus,rpcRet);
+                return retCode;
+            }
            IARM_Bus_CommonAPI_PowerPreChange_Param_t deepSleepWakeupParam;
 
           __TIMESTAMP();LOG("Waking up from Deep Sleep.. \r\n");
@@ -955,7 +966,6 @@ static IARM_Result_t _SetPowerState(void *arg)
                 IARMCEC_SendCECImageViewOn(isCecLocalLogicEnabled);
                 IARMCEC_SendCECActiveSource(isCecLocalLogicEnabled,KET_KEYDOWN,KED_MENU);
             }
-          
         }
  
     }

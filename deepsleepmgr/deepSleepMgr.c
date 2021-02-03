@@ -63,6 +63,7 @@ extern "C"
 static void _eventHandler(const char *owner, IARM_EventId_t eventId, void *data, size_t len);
 static IARM_Result_t _DeepSleepWakeup(void *arg);
 static IARM_Result_t _SetDeepSleepTimer(void *arg);
+static IARM_Result_t _GetDeepSleepStatus(void *arg);
 
 static gboolean heartbeatMsg(gpointer data);
 static gboolean deep_sleep_delay_timer_fn(gpointer data);
@@ -73,7 +74,7 @@ static uint32_t deep_sleep_wakeup_timer = 0;
 static bool nwStandbyMode_gs = false;
 GMainLoop *deepSleepMgr_Loop = NULL;
 static guint dsleep_delay_event_src = 0;
-static int IsDeviceInDeepSleep = 0;
+static DeepSleepStatus_t IsDeviceInDeepSleep = DeepSleepStatus_NotStarted;
 static gboolean isLxcRestart = 0;
 
 IARM_Result_t DeepSleepMgr_Start(int argc, char *argv[])
@@ -105,6 +106,8 @@ IARM_Result_t DeepSleepMgr_Start(int argc, char *argv[])
         LOG("Exception Caught during [device::Manager::Initialize]\r\n");
     }
 #endif    
+    IARM_Bus_RegisterCall("GetDeepSleepStatus", _GetDeepSleepStatus);
+
     /* Main loop for Deep  Sleep Manager */
     deepSleepMgr_Loop = g_main_loop_new ( NULL , FALSE );
     if(deepSleepMgr_Loop != NULL){
@@ -180,7 +183,6 @@ static void _eventHandler(const char *owner, IARM_EventId_t eventId, void *data,
 #endif /*End of _DISABLE_SCHD_REBOOT_AT_DEEPSLEEP*/
             }
             break;  
-
             case IARM_BUS_PWRMGR_EVENT_MODECHANGED:
             {
                 IARM_Bus_PWRMgr_EventData_t *param = (IARM_Bus_PWRMgr_EventData_t *)data;
@@ -197,6 +199,7 @@ static void _eventHandler(const char *owner, IARM_EventId_t eventId, void *data,
                     FILE *fpST = NULL;
                     uint32_t SleepTimeInSec = 0;
                     struct stat buf;
+                    IsDeviceInDeepSleep = DeepSleepStatus_InProgress;
                     /* Read the Delay Sleep Time  */
                     fpST = fopen("/tmp/deepSleepTimer","r");
                     if (NULL != fpST)
@@ -311,11 +314,10 @@ static void _eventHandler(const char *owner, IARM_EventId_t eventId, void *data,
                        }
                        }
                     }
-                    IsDeviceInDeepSleep = 1; 
+                    IsDeviceInDeepSleep = DeepSleepStatus_Completed;
                 }
             }
             break;
-
            default: 
               break;
         }
@@ -387,13 +389,19 @@ static IARM_Result_t _DeepSleepWakeup(void *arg)
 
             }
         }
-        IsDeviceInDeepSleep = 0;
+        IsDeviceInDeepSleep = DeepSleepStatus_NotStarted;
     
         LOG("Device woke up from Deep sleep Mode.. \r\n");
     }
 	return IARM_RESULT_SUCCESS;
 }
 
+static IARM_Result_t _GetDeepSleepStatus(void *arg)
+{
+    int *status = (int *)arg;
+    *status = IsDeviceInDeepSleep;
+    return IARM_RESULT_SUCCESS;
+}
 
 
 static IARM_Result_t _SetDeepSleepTimer(void *arg)

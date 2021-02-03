@@ -60,6 +60,12 @@ extern "C"
 
 #define IARM_BUS_DEEPSLEEPMGR_NAME 				"DEEPSLEEPMgr"  /*!< Power manager IARM bus name */
 
+typedef enum _DeepSleepStatus_t {
+    DeepSleepStatus_NotStarted = 0,        /*!< Deepsleep operation not started*/
+    DeepSleepStatus_InProgress,        /*!< Deepsleep operation in progress */
+    DeepSleepStatus_Completed,        /*!< Deepsleep operation completed */
+} DeepSleepStatus_t;
+
 /*
  * Declare RPC API names and their arguments
  */
