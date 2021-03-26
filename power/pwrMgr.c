@@ -42,6 +42,17 @@ extern "C"
 #ifdef __cplusplus
 }
 #endif
+
+#ifdef OFFLINE_MAINT_REBOOT
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <sys/types.h>
+#include <ifaddrs.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
+#endif
+
 #include <sys/stat.h>
 #include "iarmUtil.h"
 #include "irMgr.h"
@@ -255,6 +266,24 @@ static gboolean heartbeatMsg(gpointer data);
 #ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
     static bool nwStandbyMode_gs = false;
 #endif
+
+#ifdef OFFLINE_MAINT_REBOOT
+gint64 standby_time = 0;
+static bool rfcUpdated = false;
+static int standby_reboot_threshold = 86400;
+static int force_reboot_threshold = 172800;
+
+#define MAX_RFC_LEN 15
+
+#define UPTIME_ABOVE_STANDBY_REBOOT(time) (time >= standby_reboot_threshold)
+#define UPTIME_ABOVE_FORCE_REBOOT(time)   (time >= force_reboot_threshold)
+#define REBOOT_GRACE_INTERVAL(u, s)       ((u - s) >= 900)
+
+#define STANDBY_REBOOT_ENABLE "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.StandbyReboot.Enable"
+#define STANDBY_REBOOT        "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.StandbyReboot.StandbyAutoReboot"
+#define FORCE_REBOOT          "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.StandbyReboot.ForceAutoReboot"
+#endif
+
 static IARM_Result_t _SetNetworkStandbyMode(void *arg);
 static IARM_Result_t _GetNetworkStandbyMode(void *arg);
 
@@ -378,7 +407,7 @@ IARM_Result_t PWRMgr_Start(int argc, char *argv[])
     char *rdk_deep_sleep_wakeup = getenv("RDK_DEEPSLEEP_WAKEUP_ON_POWER_BUTTON");
     deepSleepWakeup = (rdk_deep_sleep_wakeup && atoi(rdk_deep_sleep_wakeup));
 
-	return IARM_RESULT_SUCCESS;
+    return IARM_RESULT_SUCCESS;
 }
 
 IARM_Result_t PWRMgr_Loop()
@@ -393,11 +422,146 @@ IARM_Result_t PWRMgr_Loop()
 	return IARM_RESULT_SUCCESS;
 }
 
+#ifdef OFFLINE_MAINT_REBOOT
+bool isStandbyRebootEnabled()
+{
+	RFC_ParamData_t rfcParam;
+	char* key = STANDBY_REBOOT_ENABLE;
+	if (WDMP_SUCCESS == getRFCParameter("PwrMgr", key, &rfcParam))
+	{
+		return (strncasecmp(rfcParam.value, "true", 4) == 0);
+	}
+
+	return false;
+}
+
+int getStandbyRebootValue(char* key)
+{
+	RFC_ParamData_t param;
+	char rfcVal[MAX_RFC_LEN+1] = {0};
+	int len = 0;
+
+	if (WDMP_SUCCESS == getRFCParameter("PwrMgr", key, &param))
+	{
+		len = strlen(param.value);
+		if (len > MAX_RFC_LEN)
+		{
+			len = MAX_RFC_LEN;
+		}
+
+		if ( (param.value[0] == '"') && (param.value[len] == '"'))
+		{
+			strncpy (rfcVal, &param.value[1], len - 1);
+			rfcVal[len] = '\0';
+		}
+		else
+		{
+			strncpy (rfcVal, param.value, MAX_RFC_LEN-1);
+			rfcVal[len] = '\0';
+		}
+		return atoi(rfcVal);
+	}
+
+	return -1;
+}
+
+bool isOfflineMode()
+{
+#if 0
+	struct stat buf;
+	return ((stat("/tmp/addressaquired_ipv4", &buf) != 0)
+		&& (stat("/tmp/addressaquired_ipv6", &buf) != 0));
+#endif
+
+	struct ifaddrs *ifAddr, *ifAddrIt;
+	bool offline = true;
+
+	getifaddrs(&ifAddr);
+	for (ifAddrIt = ifAddr; ifAddrIt != NULL; ifAddrIt = ifAddrIt->ifa_next)
+	{
+		if (NULL != ifAddrIt->ifa_addr
+			&& (!strcmp(ifAddrIt->ifa_name, "eth0:0") || !strcmp(ifAddrIt->ifa_name, "wlan0:0")))
+		{
+			LOG("ifa_name=%s sa_family=%s ifa_flags=0x%X\n",
+				ifAddrIt->ifa_name,
+				ifAddrIt->ifa_addr->sa_family == AF_INET? "AF_INET" : ifAddrIt->ifa_addr->sa_family == AF_INET6? "AF_INET6" : "None",
+			        (ifAddrIt->ifa_flags & IFF_RUNNING) );
+		}
+
+		if (NULL != ifAddrIt->ifa_addr
+			&& (ifAddrIt->ifa_addr->sa_family == AF_INET || ifAddrIt->ifa_addr->sa_family == AF_INET6)
+			&& (!strcmp(ifAddrIt->ifa_name, "eth0:0") || !strcmp(ifAddrIt->ifa_name, "wlan0:0"))
+			&& (ifAddrIt->ifa_flags & IFF_RUNNING))
+		{
+			offline = false;
+		}
+	}
+	freeifaddrs(ifAddr);
+
+	return offline;
+}
+
+bool isInStandby()
+{
+	PWRMgr_Settings_t *pSettings = &m_settings;
+	IARM_Bus_PWRMgr_PowerState_t curState = pSettings->powerState;
+	LOG("%s PowerState = %d\n", __func__, curState);
+	return  (curState == IARM_BUS_PWRMGR_POWERSTATE_STANDBY
+		|| curState == IARM_BUS_PWRMGR_POWERSTATE_STANDBY_LIGHT_SLEEP);
+}
+
+#endif
+
+
 static gboolean heartbeatMsg(gpointer data)
 {
     time_t curr = 0;
     time(&curr);
     LOG("I-ARM POWER Mgr: HeartBeat at %s\r\n", ctime(&curr));
+
+#ifdef OFFLINE_MAINT_REBOOT
+    if (!rfcUpdated)
+    {
+        LOG("StandbyReboot.Enable = %s\n", isStandbyRebootEnabled() ? "true" : "false");
+
+        standby_reboot_threshold = getStandbyRebootValue(STANDBY_REBOOT);
+        if (standby_reboot_threshold == -1)
+        {
+            standby_reboot_threshold = 86400;
+        }
+        LOG("StandbyReboot.StandbyAutoReboot = %d\n", standby_reboot_threshold);
+
+        force_reboot_threshold = getStandbyRebootValue(FORCE_REBOOT);
+        if (force_reboot_threshold == -1)
+        {
+            force_reboot_threshold = 172800;
+        }
+        LOG("StandbyReboot.ForceAutoReboot = %d\n", force_reboot_threshold);
+        rfcUpdated = true;
+    }
+
+    if (isStandbyRebootEnabled())
+    {
+        gint64 uptime = g_get_monotonic_time()/G_USEC_PER_SEC;
+        if (UPTIME_ABOVE_STANDBY_REBOOT(uptime))
+        {
+            if (REBOOT_GRACE_INTERVAL(uptime, standby_time) && isInStandby())
+            {
+                LOG("Going to reboot after %lld\n", uptime);
+                sleep(10);
+                system("sh /rebootNow.sh -s PwrMgr -o 'Standby Maintenance reboot'");
+            }
+
+            if (UPTIME_ABOVE_FORCE_REBOOT(uptime))
+            {
+                LOG("Going to reboot after %lld\n", uptime);
+                sleep(10);
+                system("sh /rebootNow.sh -s PwrMgr -o 'Forced Maintenance reboot'");
+            }
+        }
+    }
+#endif
+
     return TRUE;
 }
 
@@ -806,174 +970,178 @@ static void _irEventHandler(const char *owner, IARM_EventId_t eventId, void *dat
 
 static IARM_Result_t _SetPowerState(void *arg)
 {
-    IARM_Result_t retCode = IARM_RESULT_SUCCESS;
-    IARM_Bus_PWRMgr_SetPowerState_Param_t *param = (IARM_Bus_PWRMgr_SetPowerState_Param_t *)arg;
-    PWRMgr_Settings_t *pSettings = &m_settings;
-    IARM_Bus_CommonAPI_PowerPreChange_Param_t powerPreChangeParam;
-    IARM_Bus_PWRMgr_PowerState_t newState = param->newState;
-    IARM_Bus_PWRMgr_PowerState_t curState = pSettings->powerState;    /* Notify application of Power Changes */
-    static const char *powerstateString[5] = {"OFF","STANDBY","ON", "LIGHTSLEEP", "DEEPSLEEP"};
-   
-    if(curState != newState) {
-        
-    #ifdef ENABLE_DEEP_SLEEP     
-          /* * When Changing from Deep sleep wakeup 
-             * Notify Deep sleep manager first followed by 
-             * Power pre change call.
-          */  
-        //Changing power state ,Remove event source 
-        if(dsleep_bootup_event_src)
-        {
-            g_source_remove(dsleep_bootup_event_src);
-            dsleep_bootup_event_src = 0;
-            __TIMESTAMP();LOG("Removed Deep sleep boot up event Time source %d  \r\n",dsleep_bootup_event_src);
-        }
+	IARM_Result_t retCode = IARM_RESULT_SUCCESS;
+	IARM_Bus_PWRMgr_SetPowerState_Param_t *param = (IARM_Bus_PWRMgr_SetPowerState_Param_t *)arg;
+	PWRMgr_Settings_t *pSettings = &m_settings;
+	IARM_Bus_CommonAPI_PowerPreChange_Param_t powerPreChangeParam;
+	IARM_Bus_PWRMgr_PowerState_t newState = param->newState;
+	IARM_Bus_PWRMgr_PowerState_t curState = pSettings->powerState;    /* Notify application of Power Changes */
+	static const char *powerstateString[5] = {"OFF","STANDBY","ON", "LIGHTSLEEP", "DEEPSLEEP"};
 
-       if(  (IARM_BUS_PWRMGR_POWERSTATE_STANDBY_DEEP_SLEEP == curState)
-        && (IARM_BUS_PWRMGR_POWERSTATE_STANDBY_DEEP_SLEEP != newState))
-        {
-            IARM_Result_t rpcRet = IARM_RESULT_SUCCESS;
-            int dsStatus= 0;
-            rpcRet = IARM_Bus_Call(IARM_BUS_DEEPSLEEPMGR_NAME,
-                            (char *)"GetDeepSleepStatus",
-                            (void *)&dsStatus,
-                            sizeof(dsStatus));
-            if((DeepSleepStatus_InProgress == dsStatus) || (IARM_RESULT_SUCCESS != rpcRet))
-            {
-                LOG("%s  deepsleep in  progress  ignoreing the request dsStatus %d rpcRet :%d\r\n",__FUNCTION__,dsStatus,rpcRet);
-                return retCode;
-            }
-           IARM_Bus_CommonAPI_PowerPreChange_Param_t deepSleepWakeupParam;
+	if(curState != newState) {
 
-          __TIMESTAMP();LOG("Waking up from Deep Sleep.. \r\n");
-            deepSleepWakeupParam.curState = curState;     
-            deepSleepWakeupParam.newState = newState;
-        
-            /* Notify Deep sleep manager on Power Mode change */
-            IARM_BusDaemon_DeepSleepWakeup(deepSleepWakeupParam);
-        }
-    #endif
+#ifdef ENABLE_DEEP_SLEEP     
+		/* * When Changing from Deep sleep wakeup 
+		 * Notify Deep sleep manager first followed by 
+		 * Power pre change call.
+		 */  
+		//Changing power state ,Remove event source 
+		if(dsleep_bootup_event_src)
+		{
+			g_source_remove(dsleep_bootup_event_src);
+			dsleep_bootup_event_src = 0;
+			__TIMESTAMP();LOG("Removed Deep sleep boot up event Time source %d  \r\n",dsleep_bootup_event_src);
+		}
+
+		if(  (IARM_BUS_PWRMGR_POWERSTATE_STANDBY_DEEP_SLEEP == curState)
+				&& (IARM_BUS_PWRMGR_POWERSTATE_STANDBY_DEEP_SLEEP != newState))
+		{
+			IARM_Result_t rpcRet = IARM_RESULT_SUCCESS;
+			int dsStatus= 0;
+			rpcRet = IARM_Bus_Call(IARM_BUS_DEEPSLEEPMGR_NAME,
+					(char *)"GetDeepSleepStatus",
+					(void *)&dsStatus,
+					sizeof(dsStatus));
+			if((DeepSleepStatus_InProgress == dsStatus) || (IARM_RESULT_SUCCESS != rpcRet))
+			{
+				LOG("%s  deepsleep in  progress  ignoreing the request dsStatus %d rpcRet :%d\r\n",__FUNCTION__,dsStatus,rpcRet);
+				return retCode;
+			}
+			IARM_Bus_CommonAPI_PowerPreChange_Param_t deepSleepWakeupParam;
+
+			__TIMESTAMP();LOG("Waking up from Deep Sleep.. \r\n");
+			deepSleepWakeupParam.curState = curState;     
+			deepSleepWakeupParam.newState = newState;
+
+			/* Notify Deep sleep manager on Power Mode change */
+			IARM_BusDaemon_DeepSleepWakeup(deepSleepWakeupParam);
+		}
+#endif
 
 		__TIMESTAMP();LOG("Power Mode Change from %s to %s start\n",powerstateString[curState],powerstateString[newState]);
 
-      powerPreChangeParam.newState = param->newState;
+		powerPreChangeParam.newState = param->newState;
 		powerPreChangeParam.curState = pSettings->powerState;  
 
-        IARM_BusDaemon_PowerPrechange(powerPreChangeParam);
+		IARM_BusDaemon_PowerPrechange(powerPreChangeParam);
 		__TIMESTAMP();LOG("Power Mode Change from %s to %s end\n",powerstateString[curState],powerstateString[newState]);
-		
+
 		if(newState != IARM_BUS_PWRMGR_POWERSTATE_ON){
-            _SetAVPortsPowerState(newState);
-            _SetLEDStatus(newState);
-        }
-        else
-        {
-            _SetAVPortsPowerState(newState);
-            _SetLEDStatus(newState);
-        }
-        
-        pSettings->powerState = newState;
-        _WriteSettings(m_settingsFile);
+			_SetAVPortsPowerState(newState);
+			_SetLEDStatus(newState);
+#ifdef OFFLINE_MAINT_REBOOT
+			standby_time = g_get_monotonic_time()/G_USEC_PER_SEC;
+			LOG("Power state changed at %lld\n", standby_time);
+#endif
+		}
+		else
+		{
+			_SetAVPortsPowerState(newState);
+			_SetLEDStatus(newState);
+		}
+
+		pSettings->powerState = newState;
+		_WriteSettings(m_settingsFile);
 #ifdef _ENABLE_FP_KEY_SENSITIVITY_IMPROVEMENT
-       if(transitionState != newState)
-       {
-           transitionState = newState;
-       }
-       if(targetState != newState)
-       {
-           targetState = newState;
-       }
+		if(transitionState != newState)
+		{
+			transitionState = newState;
+		}
+		if(targetState != newState)
+		{
+			targetState = newState;
+		}
 #endif
 
-        if (newState != IARM_BUS_PWRMGR_POWERSTATE_ON) {
-            time(&xre_timer); // Hack to fix DELIA-11393
-            LOG("Invoking clean up script\r\n");
-            if(param->keyCode != KED_FP_POWER)
-            {
-                system("/lib/rdk/standbyCleanup.sh");
-            }
-            else
-            {
-                __TIMESTAMP();LOG("Standby operation due to KED_FP_POWER key press, Invoking script with forceShutdown \r\n");
-                system("/lib/rdk/standbyCleanup.sh --forceShutdown");
-            }
-        }
+		if (newState != IARM_BUS_PWRMGR_POWERSTATE_ON) {
+			time(&xre_timer); // Hack to fix DELIA-11393
+			LOG("Invoking clean up script\r\n");
+			if(param->keyCode != KED_FP_POWER)
+			{
+				system("/lib/rdk/standbyCleanup.sh");
+			}
+			else
+			{
+				__TIMESTAMP();LOG("Standby operation due to KED_FP_POWER key press, Invoking script with forceShutdown \r\n");
+				system("/lib/rdk/standbyCleanup.sh --forceShutdown");
+			}
+		}
 
-        /* Independent of Deep sleep */
-        PLAT_API_SetPowerState(newState);
-  
-        /*  * Power Change Event 
-            * Used by Deep sleep and HDMI CEC. 
-        */    
-        LOG("[PwrMgr] Post Power Mode Change Event \r\n");    
-        {
-            IARM_Bus_PWRMgr_EventData_t _eventData;
-            _eventData.data.state.curState = curState;
-            _eventData.data.state.newState = newState;
+		/* Independent of Deep sleep */
+		PLAT_API_SetPowerState(newState);
 
-            #ifdef ENABLE_DEEP_SLEEP
-                if(IsWakeupTimerSet)
-                {
-                    /* Use the wakeup timer set by XRE */
-                    _eventData.data.state.deep_sleep_timeout = deep_sleep_wakeup_timeout_sec;
-                }
-                else
-                { 
-                     /* Set the  wakeup time till 2AM */
-                    deep_sleep_wakeup_timeout_sec = getWakeupTime();
-                    _eventData.data.state.deep_sleep_timeout = deep_sleep_wakeup_timeout_sec;
-                }
+		/*  * Power Change Event 
+		 * Used by Deep sleep and HDMI CEC. 
+		 */    
+		LOG("[PwrMgr] Post Power Mode Change Event \r\n");    
+		{
+			IARM_Bus_PWRMgr_EventData_t _eventData;
+			_eventData.data.state.curState = curState;
+			_eventData.data.state.newState = newState;
 
-            #ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
-                _eventData.data.state.nwStandbyMode = nwStandbyMode_gs;
-            #endif
+#ifdef ENABLE_DEEP_SLEEP
+			if(IsWakeupTimerSet)
+			{
+				/* Use the wakeup timer set by XRE */
+				_eventData.data.state.deep_sleep_timeout = deep_sleep_wakeup_timeout_sec;
+			}
+			else
+			{ 
+				/* Set the  wakeup time till 2AM */
+				deep_sleep_wakeup_timeout_sec = getWakeupTime();
+				_eventData.data.state.deep_sleep_timeout = deep_sleep_wakeup_timeout_sec;
+			}
+
+#ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
+			_eventData.data.state.nwStandbyMode = nwStandbyMode_gs;
+#endif
 
 
-                /* Start a Deep sleep Wakeup Time source
-                * Reboot the box after elapse of user configured / Calculated  Timeout.
-                */  
-                if(IARM_BUS_PWRMGR_POWERSTATE_STANDBY_DEEP_SLEEP == newState)
-                {
+			/* Start a Deep sleep Wakeup Time source
+			 * Reboot the box after elapse of user configured / Calculated  Timeout.
+			 */  
+			if(IARM_BUS_PWRMGR_POWERSTATE_STANDBY_DEEP_SLEEP == newState)
+			{
 
-                /* 
-                - In Deep Sleep, the timer resets and the does not reboot after wakeup time out 
-                - As Gloop calls the handler only after Soc wakeup from dep sleep and after expiry of deep_sleep_wakeup_timeout_sec 
-                - So if Wakeup timeout is 10 minutes , box reboots after 20 minutes,
-                - To handle this, the handler is called every 30 sec and check for expiry of deep sleep wakeup timeout. 
-                */    
-                    time(&timeAtDeepSleep);
-                    wakeup_event_src = g_timeout_add_seconds ((guint)30,deep_sleep_wakeup_fn,pwrMgr_Gloop); 
-                    __TIMESTAMP();LOG("Added Deep Sleep Wakeup Time Source %d for %d Sec \r\n",wakeup_event_src,deep_sleep_wakeup_timeout_sec);
-                #ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
-                    __TIMESTAMP();LOG("Networkstandbymode for Source %d is: %s \r\n",wakeup_event_src, (nwStandbyMode_gs?("Enabled"):("Disabled")));
-                #endif
+				/* 
+				   - In Deep Sleep, the timer resets and the does not reboot after wakeup time out 
+				   - As Gloop calls the handler only after Soc wakeup from dep sleep and after expiry of deep_sleep_wakeup_timeout_sec 
+				   - So if Wakeup timeout is 10 minutes , box reboots after 20 minutes,
+				   - To handle this, the handler is called every 30 sec and check for expiry of deep sleep wakeup timeout. 
+				   */    
+				time(&timeAtDeepSleep);
+				wakeup_event_src = g_timeout_add_seconds ((guint)30,deep_sleep_wakeup_fn,pwrMgr_Gloop); 
+				__TIMESTAMP();LOG("Added Deep Sleep Wakeup Time Source %d for %d Sec \r\n",wakeup_event_src,deep_sleep_wakeup_timeout_sec);
+#ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
+				__TIMESTAMP();LOG("Networkstandbymode for Source %d is: %s \r\n",wakeup_event_src, (nwStandbyMode_gs?("Enabled"):("Disabled")));
+#endif
 
-                }
-                else if(wakeup_event_src)
-                {
-                    //We got some key event, Remove event source 
-                    __TIMESTAMP();LOG("Removed Deep sleep Wakeup Time source %d for %d Sec.. \r\n",wakeup_event_src,deep_sleep_wakeup_timeout_sec);
-                    g_source_remove(wakeup_event_src);
-                    wakeup_event_src = 0;
-                    timeAtDeepSleep = 0;
-                }
-            #endif
-            IARM_Bus_BroadcastEvent( IARM_BUS_PWRMGR_NAME, 
-            IARM_BUS_PWRMGR_EVENT_MODECHANGED, (void *)&_eventData, sizeof(_eventData));
-            if(IARM_BUS_PWRMGR_POWERSTATE_ON == newState)
-            {
-                __TIMESTAMP();LOG("IARMCEC_SendCECImageViewOn and IARMCEC_SendCECActiveSource. \r\n");
-                IARMCEC_SendCECImageViewOn(isCecLocalLogicEnabled);
-                IARMCEC_SendCECActiveSource(isCecLocalLogicEnabled,KET_KEYDOWN,KED_MENU);
-            }
-        }
- 
-    }
-    else
+			}
+			else if(wakeup_event_src)
+			{
+				//We got some key event, Remove event source 
+				__TIMESTAMP();LOG("Removed Deep sleep Wakeup Time source %d for %d Sec.. \r\n",wakeup_event_src,deep_sleep_wakeup_timeout_sec);
+				g_source_remove(wakeup_event_src);
+				wakeup_event_src = 0;
+				timeAtDeepSleep = 0;
+			}
+#endif
+			IARM_Bus_BroadcastEvent( IARM_BUS_PWRMGR_NAME, 
+					IARM_BUS_PWRMGR_EVENT_MODECHANGED, (void *)&_eventData, sizeof(_eventData));
+			if(IARM_BUS_PWRMGR_POWERSTATE_ON == newState)
+			{
+				__TIMESTAMP();LOG("IARMCEC_SendCECImageViewOn and IARMCEC_SendCECActiveSource. \r\n");
+				IARMCEC_SendCECImageViewOn(isCecLocalLogicEnabled);
+				IARMCEC_SendCECActiveSource(isCecLocalLogicEnabled,KET_KEYDOWN,KED_MENU);
+			}
+		}
+
+	}
+	else
 	{
-        LOG("Warning:PowerState is same as requested\r\n");
-    }
-    return retCode;
+		LOG("Warning:PowerState is same as requested\r\n");
+	}
+	return retCode;
 }
 
 
