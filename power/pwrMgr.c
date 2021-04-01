@@ -215,7 +215,7 @@ static IARM_Result_t _WareHouseReset(void *arg);
 static IARM_Result_t _ColdFactoryReset(void *);
 static IARM_Result_t _FactoryReset(void *);
 static IARM_Result_t _UserFactoryReset(void *);
-
+static IARM_Result_t _GetPowerStateBeforeReboot(void *arg);
 
 static int _InitSettings(const char *settingsFile);
 static int _WriteSettings(const char *settingsFile);
@@ -239,7 +239,7 @@ static IARM_Bus_Daemon_SysMode_t isEASInProgress = IARM_BUS_SYS_MODE_NORMAL;
 /*pwrMgr Glib variables */
 GMainLoop *pwrMgr_Gloop = NULL;
 static gboolean heartbeatMsg(gpointer data);
-
+std::string powerStateBeforeReboot_gc;
 #ifdef ENABLE_DEEP_SLEEP  
 
     /* PwrMgr Static Functions for Deep SLeep feature */
@@ -286,6 +286,30 @@ static int force_reboot_threshold = 172800;
 
 static IARM_Result_t _SetNetworkStandbyMode(void *arg);
 static IARM_Result_t _GetNetworkStandbyMode(void *arg);
+
+static void setPowerStateBeforeReboot (IARM_Bus_PWRMgr_PowerState_t powerState) {
+    switch (powerState) {
+        case IARM_BUS_PWRMGR_POWERSTATE_OFF:
+            powerStateBeforeReboot_gc = std::string ("OFF");
+            break;
+        case IARM_BUS_PWRMGR_POWERSTATE_STANDBY:
+            powerStateBeforeReboot_gc = std::string ("STANDBY");
+            break;
+        case IARM_BUS_PWRMGR_POWERSTATE_ON:
+            powerStateBeforeReboot_gc = std::string ("ON");
+            break;
+        case IARM_BUS_PWRMGR_POWERSTATE_STANDBY_LIGHT_SLEEP:
+            powerStateBeforeReboot_gc = std::string ("LIGHT_SLEEP");
+            break;
+        case IARM_BUS_PWRMGR_POWERSTATE_STANDBY_DEEP_SLEEP:
+            powerStateBeforeReboot_gc = std::string ("DEEP_SLEEP");
+            break;
+        default :
+            powerStateBeforeReboot_gc = std::string ("UNKNOWN");
+            break;
+    }
+    printf ("[%s]:[%d] powerStateBeforeReboot: %s \n", __FUNCTION__, __LINE__, powerStateBeforeReboot_gc.c_str());
+}
 
 static bool get_video_port_standby_setting(const char * port)
 {
@@ -382,6 +406,7 @@ IARM_Result_t PWRMgr_Start(int argc, char *argv[])
 
     /*Register EAS handler so that we can ensure audio settings for EAS */
     IARM_Bus_RegisterCall(IARM_BUS_COMMON_API_SysModeChange,_SysModeChange);
+    IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_GetPowerStateBeforeReboot, _GetPowerStateBeforeReboot);
 
 #ifdef ENABLE_THERMAL_PROTECTION
     initializeThermalProtection();
@@ -879,8 +904,13 @@ static void _irEventHandler(const char *owner, IARM_EventId_t eventId, void *dat
                 }
                 if((keyCode == KED_DEEPSLEEP_WAKEUP) && (keyType == KET_KEYUP) && (curState == IARM_BUS_PWRMGR_POWERSTATE_STANDBY_DEEP_SLEEP))
                 {
-                    newState = IARM_BUS_PWRMGR_POWERSTATE_ON;
-                    LOG("KED_DEEPSLEEP_WAKEUP in DEEP_SLEEP so change the state to ON cur=%d,new=%d\r\n", curState, newState);
+                    #ifdef PLATCO_BOOTTO_STANDBY                    
+                        newState = IARM_BUS_PWRMGR_POWERSTATE_STANDBY;
+                        LOG("KED_DEEPSLEEP_WAKEUP in DEEP_SLEEP so change the state to STANDBY cur=%d,new=%d\r\n", curState, newState);
+                    #else
+                        newState = IARM_BUS_PWRMGR_POWERSTATE_ON;
+                        LOG("KED_DEEPSLEEP_WAKEUP in DEEP_SLEEP so change the state to ON cur=%d,new=%d\r\n", curState, newState);
+                    #endif
                 }
 #ifdef _ENABLE_FP_KEY_SENSITIVITY_IMPROVEMENT
                 //LOG("After adjustment Power Manager Settings State vs new State(%x, %x) transition state %x \r\n", curState, newState, transitionState);
@@ -1154,6 +1184,15 @@ static IARM_Result_t _GetPowerState(void *arg)
     return IARM_RESULT_SUCCESS;
 }
 
+static IARM_Result_t _GetPowerStateBeforeReboot(void *arg)
+{
+    IARM_Bus_PWRMgr_GetPowerStateBeforeReboot_Param_t *param = (IARM_Bus_PWRMgr_GetPowerStateBeforeReboot_Param_t *)arg;
+    memset (param->powerStateBeforeReboot, '\0', MAX_PWR_STATE_BEF_REBOOR_STR_LEN);
+    strncpy (param->powerStateBeforeReboot, powerStateBeforeReboot_gc.c_str(), strlen(powerStateBeforeReboot_gc.c_str()));
+    return IARM_RESULT_SUCCESS;
+}
+
+
 static IARM_Result_t _WareHouseReset(void *arg)
 {
     IARM_Bus_PWRMgr_WareHouseReset_Param_t *param = (IARM_Bus_PWRMgr_WareHouseReset_Param_t *)arg;
@@ -1296,7 +1335,6 @@ static int _InitSettings(const char *settingsFile)
         int read_size = sizeof(uint32_t) * 3;
         lseek(fd, 0, SEEK_SET);
         ret = read(fd, pSettings,read_size);
-
         if((ret == read_size))
         {
             switch(pSettings->version)
@@ -1356,13 +1394,14 @@ static int _InitSettings(const char *settingsFile)
                                #ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
                                    nwStandbyMode_gs = pSettings->nwStandbyMode;
                                     __TIMESTAMP();LOG("Persisted network standby mode is: %s \r\n", nwStandbyMode_gs?("Enabled"):("Disabled"));
-			       #endif
-			       #ifdef PLATCO_BOOTTO_STANDBY
-				   if(stat("/tmp/pwrmgr_restarted",&buf) != 0)
-				   {
-					pSettings->powerState = IARM_BUS_PWRMGR_POWERSTATE_STANDBY;
-					__TIMESTAMP();LOG("Setting default powerstate to standby in Platco\n\r");
-				   }
+                               #endif
+                               #ifdef PLATCO_BOOTTO_STANDBY
+                                   if(stat("/tmp/pwrmgr_restarted",&buf) != 0)
+                                   {
+                                       setPowerStateBeforeReboot (pSettings->powerState);
+                                       pSettings->powerState = IARM_BUS_PWRMGR_POWERSTATE_STANDBY;
+                                       __TIMESTAMP();LOG("Setting default powerstate to standby\n\r");
+                                   }
                                #endif
                            }
 						}
@@ -1389,10 +1428,12 @@ static int _InitSettings(const char *settingsFile)
                                #endif 
                                #ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
                                    pSettings->nwStandbyMode = nwStandbyMode_gs;
-			       #endif
-			       #ifdef PLATCO_BOOTTO_STANDBY
-				   if(stat("/tmp/pwrmgr_restarted",&buf) != 0)
-					   pSettings->powerState = IARM_BUS_PWRMGR_POWERSTATE_STANDBY;
+                               #endif
+                               #ifdef PLATCO_BOOTTO_STANDBY
+                               if(stat("/tmp/pwrmgr_restarted",&buf) != 0) {
+                                   setPowerStateBeforeReboot (pSettings->powerState);
+                                   pSettings->powerState = IARM_BUS_PWRMGR_POWERSTATE_STANDBY;
+                               }
                                #endif
                               pSettings->length = (sizeof(PWRMgr_Settings_t) - PADDING_SIZE );
                                 LOG("[PwrMgr] Write PwrMgr Settings File With Current Data Length %d \r\n",pSettings->length);
@@ -1457,6 +1498,13 @@ static int _InitSettings(const char *settingsFile)
         }
         else
         {
+            /**/
+            #ifdef PLATCO_BOOTTO_STANDBY
+            if(stat("/tmp/pwrmgr_restarted",&buf) != 0) {
+                powerStateBeforeReboot_gc = std::string("UNKNOWN");
+                printf ("[%s]:[%d] powerStateBeforeReboot: %s\n", __FUNCTION__, __LINE__, powerStateBeforeReboot_gc.c_str());
+            }
+            #endif
             ret = 0;
         } 
         if (ret == 0) {
@@ -1472,10 +1520,10 @@ static int _InitSettings(const char *settingsFile)
             #endif
             #ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
                 pSettings->nwStandbyMode = nwStandbyMode_gs;
-	    #endif
-	    #ifdef PLATCO_BOOTTO_STANDBY
-		if(stat("/tmp/pwrmgr_restarted",&buf) != 0)
-			pSettings->powerState = IARM_BUS_PWRMGR_POWERSTATE_STANDBY;
+            #endif
+            #ifdef PLATCO_BOOTTO_STANDBY
+            if(stat("/tmp/pwrmgr_restarted",&buf) != 0)
+                pSettings->powerState = IARM_BUS_PWRMGR_POWERSTATE_STANDBY;
             #endif
             ret = write(fd, pSettings, pSettings->length);
             if (ret < 0) {
@@ -1535,6 +1583,16 @@ static int _InitSettings(const char *settingsFile)
                 /* Use settings stored in uimgr file */
             }
         }
+
+        #ifdef PLATCO_BOOTTO_STANDBY
+        if(stat("/tmp/pwrmgr_restarted",&buf) != 0) { 
+            IARM_Bus_PWRMgr_EventData_t _eventData;
+            _eventData.data.state.curState = IARM_BUS_PWRMGR_POWERSTATE_OFF;
+            _eventData.data.state.newState = IARM_BUS_PWRMGR_POWERSTATE_STANDBY;
+            LOG("%s: Init setting powermode change from OFF to STANDBY \r\n", __FUNCTION__);
+            IARM_Bus_BroadcastEvent( IARM_BUS_PWRMGR_NAME, IARM_BUS_PWRMGR_EVENT_MODECHANGED, (void *)&_eventData, sizeof(_eventData));
+        } 
+        #endif
 
         if (ret > 0 && ret < (int)sizeof(*pSettings)) {
             _DumpSettings(pSettings);

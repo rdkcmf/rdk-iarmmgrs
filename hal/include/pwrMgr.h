@@ -224,6 +224,16 @@ typedef struct _IARM_Bus_PWRMgr_NetworkStandbyMode_Param_t {
        bool bStandbyMode;        /*!< Standby mode to set and get*/
 } IARM_Bus_PWRMgr_NetworkStandbyMode_Param_t;
 
+#define MAX_PWR_STATE_BEF_REBOOR_STR_LEN (32)
+#define IARM_BUS_PWRMGR_API_GetPowerStateBeforeReboot 		"GetPowerStateBeforeReboot" /*!< Retrives power state before reboot*/
+/**
+ *  @brief Structure which holds the power state before reboot of the CPE.
+ */
+typedef struct _IARM_Bus_PWRMgr_GetPowerStateBeforeReboot_Param_t {
+    char powerStateBeforeReboot [MAX_PWR_STATE_BEF_REBOOR_STR_LEN];        /*!< Powerstate before reboot of the box*/ 
+} IARM_Bus_PWRMgr_GetPowerStateBeforeReboot_Param_t;
+
+
 #ifdef __cplusplus
 }
 #endif
