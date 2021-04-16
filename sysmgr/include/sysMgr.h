@@ -137,6 +137,7 @@ typedef enum _SYSMgr_EventId_t {
 	IARM_BUS_SYSMGR_EVENT_EISS_FILTER_STATUS,	/*!< EISS Filter status event */
 	IARM_BUS_SYSMGR_EVENT_EISS_APP_ID_UPDATE,	/*!< EISS App ID update */
 	IARM_BUS_SYSMGR_EVENT_KEYCODE_LOGGING_CHANGED,	/*!< Key Code logging status update */
+	IARM_BUS_SYSMGR_EVENT_USB_MOUNT_CHANGED,	/*!< Fires when USB mounts change */
 	IARM_BUS_SYSMGR_EVENT_MAX				/*!< Max Event Id */
 } IARM_Bus_SYSMgr_EventId_t;
 
@@ -253,6 +254,11 @@ typedef struct _IARM_BUS_SYSMgr_EventData_t{
 		struct _KEY_CODE_LOG {
 			int logStatus;
 		} keyCodeLogData;
+		struct _USB_MOUNT {
+			int mounted;
+			char device[128];
+			char dir[256];
+		} usbMountData;
 
 	} data;
 }IARM_Bus_SYSMgr_EventData_t;
