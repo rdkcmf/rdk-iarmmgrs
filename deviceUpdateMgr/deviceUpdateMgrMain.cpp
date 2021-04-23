@@ -59,6 +59,8 @@ extern "C"
 #include <iostream>
 #include <utils.h>
 
+#include "safec_lib.h"
+
 extern "C"
 {
 #ifdef YOCTO_BUILD
@@ -636,6 +638,7 @@ string getXMLTagText(string xml, string tag)
 
 bool getEventData(string filename, _IARM_Bus_DeviceUpdate_Announce_t *myData)
 {
+	errno_t rc = -1;
 	string fileContents;
 	std::ifstream myfile;
 
@@ -663,13 +666,21 @@ bool getEventData(string filename, _IARM_Bus_DeviceUpdate_Announce_t *myData)
 		LOG("dumMgr:--------------------Missing Version %s\n", filename.c_str());
 		return false;
 	}
-	strcpy(myData->deviceImageVersion, text.c_str());
+		rc = strcpy_s(myData->deviceImageVersion,sizeof(myData->deviceImageVersion), text.c_str());
+		if(rc!=EOK)
+		{
+			ERR_CHK(rc);
+		}
 
 	text = getXMLTagText(fileContents, "image:type");
 	myData->deviceImageType = atoi(text.c_str());
 
 	text = getXMLTagText(fileContents, "image:productName");
-	strcpy(myData->deviceName, text.c_str());
+		rc = strcpy_s(myData->deviceName,sizeof(myData->deviceName), text.c_str());
+		if(rc!=EOK)
+		{
+			ERR_CHK(rc);
+		}
 //	LOG("dumMgr:version:%s", text.c_str());
 //	LOG(" type:%s", text.c_str());
 //	LOG("product name:%s\n", text.c_str());
@@ -785,6 +796,7 @@ i=0;
 
 IARM_Result_t AcceptUpdate(void *arg)
 {
+	errno_t rc = -1;
 	__TIMESTAMP();
 	LOG("dumMgr:Accept Update recieved\n");
 	_IARM_Bus_DeviceUpdate_AcceptUpdate_Param_t *updateParams = new _IARM_Bus_DeviceUpdate_AcceptUpdate_Param_t();
@@ -793,7 +805,11 @@ IARM_Result_t AcceptUpdate(void *arg)
 	LOG("dumMgr:update Session ID=%d\n", param->updateSessionID);
 	param->interactiveDownload = interactiveDownload;
 	param->interactiveLoad = interactiveLoad;
-	memcpy(updateParams, param, sizeof(_IARM_Bus_DeviceUpdate_AcceptUpdate_Param_t));
+		rc = memcpy_s(updateParams,sizeof(_IARM_Bus_DeviceUpdate_AcceptUpdate_Param_t), param, sizeof(_IARM_Bus_DeviceUpdate_AcceptUpdate_Param_t));
+		if(rc!=EOK)
+		{
+			ERR_CHK(rc);
+		}
 	updateInProgress_t *uip = new updateInProgress_t();
 	uip->acceptParams = updateParams;
 	pthread_mutex_lock(&mapMutex);

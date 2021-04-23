@@ -37,7 +37,7 @@
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-
+#include "safec_lib.h"
 #include "libIBus.h"
 #include "iarmUtil.h"
 #include "sysMgr.h"
@@ -312,7 +312,7 @@ static IARM_Result_t _GetSystemStates(void *arg)
 
 static void _sysEventHandler(const char *owner, IARM_EventId_t eventId, void *data, size_t len)
 {
-    
+    errno_t rc = -1;	
 	/* Only handle state events */
     if (eventId != IARM_BUS_SYSMGR_EVENT_SYSTEMSTATE) return;
 
@@ -334,7 +334,12 @@ static void _sysEventHandler(const char *owner, IARM_EventId_t eventId, void *da
 				systemStates.channel_map.state = state;
 				systemStates.channel_map.error = error;
 				/* memcpy can be replaced with strcpy once the RI is replaced with RMF */
-				memcpy( systemStates.channel_map.payload, payload, sizeof( systemStates.channel_map.payload ) );
+					rc = memcpy_s( systemStates.channel_map.payload,sizeof(systemStates.channel_map.payload), payload, sizeof( systemStates.channel_map.payload ) );
+					if(rc!=EOK)
+					{
+						ERR_CHK(rc);
+					}
+					memcpy( systemStates.channel_map.payload, payload, sizeof( systemStates.channel_map.payload ) );
 				systemStates.channel_map.payload[ sizeof( systemStates.channel_map.payload ) - 1] = 0;
 				LOG( "Got  IARM_BUS_SYSMGR_SYSSTATE_CHANNELMAP ID = %s", systemStates.channel_map.payload );				
 				break;
@@ -416,7 +421,11 @@ static void _sysEventHandler(const char *owner, IARM_EventId_t eventId, void *da
 				systemStates.time_zone_available.state = state;
 				systemStates.time_zone_available.error = error;
 				/* memcpy can be replaced with strcpy once the RI is replaced with RMF */
-				memcpy( systemStates.time_zone_available.payload, payload, sizeof( systemStates.time_zone_available.payload ) );
+					rc = memcpy_s( systemStates.time_zone_available.payload,sizeof(systemStates.time_zone_available.payload), payload, sizeof( systemStates.time_zone_available.payload ) );
+					if(rc!=EOK)
+					{
+						ERR_CHK(rc);
+					}
 				systemStates.time_zone_available.payload[ sizeof( systemStates.time_zone_available.payload ) - 1] = 0;
 				LOG( "Got IARM_BUS_SYSMGR_SYSSTATE_TIME_ZONE = %s\n", systemStates.time_zone_available.payload );
 				break;
@@ -472,7 +481,11 @@ static void _sysEventHandler(const char *owner, IARM_EventId_t eventId, void *da
 				systemStates.vod_ad.state = state;
 				systemStates.vod_ad.error = error;
 				/* memcpy can be replaced with strcpy once the RI is replaced with RMF */			
-				memcpy( systemStates.vod_ad.payload, payload, sizeof( systemStates.vod_ad.payload ) );
+					rc = memcpy_s( systemStates.vod_ad.payload,sizeof(systemStates.vod_ad.payload), payload, sizeof( systemStates.vod_ad.payload ) );
+					if(rc!=EOK)
+					{
+						ERR_CHK(rc);
+					}
 				systemStates.vod_ad.payload[ sizeof( systemStates.vod_ad.payload ) -1 ] =0;
 				LOG( "Got IARM_BUS_SYSMGR_SYSSTATE_VOD_AD = %s\n", systemStates.vod_ad.payload );
 				break;
@@ -492,14 +505,22 @@ static void _sysEventHandler(const char *owner, IARM_EventId_t eventId, void *da
 				systemStates.dac_id.state = state;
 				systemStates.dac_id.error = error;
 				assert ( ( sizeof(systemStates.dac_id.payload) -1 ) > strlen(payload) );
-				strcpy( systemStates.dac_id.payload, payload );
+					rc = strcpy_s( systemStates.dac_id.payload,sizeof(systemStates.dac_id.payload), payload );
+					if(rc!=EOK)
+					{
+						ERR_CHK(rc);
+					}
 				LOG( "Got IARM_BUS_SYSMGR_SYSSTATE_DAC_ID = %s\n", systemStates.dac_id.payload );
 				break;
 			case   IARM_BUS_SYSMGR_SYSSTATE_PLANT_ID :
 				systemStates.plant_id.state = state;
 				systemStates.plant_id.error = error;
 				assert ( ( sizeof(systemStates.plant_id.payload) -1 ) > strlen(payload) );
-				strcpy( systemStates.plant_id.payload, payload );
+					rc = strcpy_s( systemStates.plant_id.payload,sizeof(systemStates.plant_id.payload), payload );
+					if(rc!=EOK)
+					{
+						ERR_CHK(rc);
+					}
 				LOG( "Got IARM_BUS_SYSMGR_SYSSTATE_PLANT_ID = %s\n", systemStates.plant_id.payload );
 				break;
 			case IARM_BUS_SYSMGR_SYSSTATE_STB_SERIAL_NO:

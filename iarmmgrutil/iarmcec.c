@@ -5,9 +5,11 @@
 #include "host.hpp"
 #include "CecIARMBusMgr.h"
 #include "iarmcec.h"
+#include "safec_lib.h"
 
 bool IARMCEC_SendCECActiveSource(bool bCecLocalLogic, int keyType, int keyCode)
 {
+    errno_t rc = -1;
     bool status = 0;
     IARM_Result_t ret = IARM_RESULT_SUCCESS;
     IARM_Bus_CECMgr_Send_Param_t dataToSend;
@@ -36,7 +38,11 @@ bool IARMCEC_SendCECActiveSource(bool bCecLocalLogic, int keyType, int keyCode)
 
                     memset(&dataToSend, 0, sizeof(dataToSend));
                     dataToSend.length = 4;
-                    memcpy(dataToSend.data, buf, dataToSend.length);
+		    rc = memcpy_s(dataToSend.data,sizeof(dataToSend.data), buf, dataToSend.length);
+		    if(rc!=EOK)
+		    {
+			ERR_CHK(rc);
+		    }
                     ret = IARM_Bus_Call(IARM_BUS_CECMGR_NAME,IARM_BUS_CECMGR_API_Send,(void *)&dataToSend, sizeof(dataToSend));
                     if( IARM_RESULT_SUCCESS == ret)
                     {
@@ -65,6 +71,7 @@ bool IARMCEC_SendCECActiveSource(bool bCecLocalLogic, int keyType, int keyCode)
 
 bool IARMCEC_SendCECImageViewOn(bool bCecLocalLogic)
 {
+    errno_t rc = -1;
     bool status = 0;
     IARM_Result_t ret = IARM_RESULT_SUCCESS;
     IARM_Bus_CECMgr_Send_Param_t dataToSend;
@@ -84,7 +91,11 @@ bool IARMCEC_SendCECImageViewOn(bool bCecLocalLogic)
 
             memset(&dataToSend, 0, sizeof(dataToSend));
             dataToSend.length = 2;
-            memcpy(dataToSend.data, buf, dataToSend.length);
+	    rc = memcpy_s(dataToSend.data,sizeof(dataToSend.data), buf, dataToSend.length);
+	    if(rc!=EOK)
+	    {
+	          ERR_CHK(rc);
+	    }
             ret = IARM_Bus_Call(IARM_BUS_CECMGR_NAME,IARM_BUS_CECMGR_API_Send,(void *)&dataToSend, sizeof(dataToSend));
             if( IARM_RESULT_SUCCESS == ret)
             {

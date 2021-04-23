@@ -27,6 +27,7 @@
 #ifdef SLEEPTIMER_USE_CECSTANDBY
 #include "CecIARMBusMgr.h"
 #endif
+#include "safec_lib.h"
 
 static GMainLoop *mainloop = NULL;
 static guint timerSource = 0;
@@ -38,11 +39,16 @@ static pthread_mutex_t  _lock = PTHREAD_MUTEX_INITIALIZER;
 #ifdef SLEEPTIMER_USE_CECSTANDBY
 static void SendCECStandby(void)
 {
+    errno_t rc = -1;
     IARM_Bus_CECMgr_Send_Param_t dataToSend;
     unsigned char buf[] = {0x30, 0x36}; //standby msg, from TUNER to TV
     memset(&dataToSend, 0, sizeof(dataToSend));
     dataToSend.length = sizeof(buf);
-    memcpy(dataToSend.data, buf, dataToSend.length);
+    rc = memcpy_s(dataToSend.data,sizeof(dataToSend.data), buf, dataToSend.length);
+    if(rc!=EOK)
+    {
+          ERR_CHK(rc);
+    }
     LOG("SleepTimer send CEC Standby\r\n");
     IARM_Bus_Call(IARM_BUS_CECMGR_NAME,IARM_BUS_CECMGR_API_Send,(void *)&dataToSend, sizeof(dataToSend));
 }

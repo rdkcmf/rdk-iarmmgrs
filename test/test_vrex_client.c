@@ -34,7 +34,7 @@
 #include "libIBus.h"
 #include "vrexMgr.h"
 #include <pthread.h>
-
+#include "safec_lib.h"
 #if !defined(MIN)
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #endif
@@ -118,7 +118,7 @@ static void _eventHandler(const char *owner, IARM_EventId_t eventId, void *data,
 
 int main(int argc, char *argv[])
 {
-
+    errno_t rc = -1;
     IARM_Result_t err;
     int input;
     char filename[] = DEFAULT_PCM_FILENAME;
@@ -166,10 +166,21 @@ int main(int argc, char *argv[])
             case 'c':
             {
                 if (currentCodec[0] == 'P')
-                    strcpy(currentCodec, "ADPCM");
+		{
+		    	rc = strcpy_s(currentCodec,sizeof(currentCodec), "ADPCM");
+		    	if(rc!=EOK)
+		    	{
+			    ERR_CHK(rc);
+		    	}
+		}
                 else
-                    strcpy(currentCodec, "PCM_16_16K");
-
+		{
+		    	rc = strcpy_s(currentCodec,sizeof(currentCodec), "PCM_16_16K");
+		    	if(rc!=EOK)
+		    	{
+			    ERR_CHK(rc);
+		    	}
+		}
                 printf("Codec is now: %s\n", currentCodec);
             }
             break;

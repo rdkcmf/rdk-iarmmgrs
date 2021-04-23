@@ -54,7 +54,7 @@
 #include "vrexMgrInternal.h"
 //#include "iarmStatus.h"
 #include "pwrMgr.h"
-
+#include "safec_lib.h"
 //#include "gpMgr.h"
 #include "rf4ceMgr.h"
 
@@ -109,7 +109,10 @@ static pthread_mutex_t power_save_mutex;
 
 IARM_Result_t VREXMgr_Start()
 {
-	
+    errno_t rc = -1;	
+    char *list[] = { "XR2-", "XR5-", "XR11-", "XR13-" };
+    int i;
+
     IARM_Result_t status = IARM_RESULT_SUCCESS;
 
 	LOG("Entering [%s] - [%s] - disabling io redirect buf\r\n", __FUNCTION__, IARM_BUS_VREXMGR_NAME);
@@ -181,17 +184,17 @@ IARM_Result_t VREXMgr_Start()
 #endif                  
 				expectedRemotesPacket.msg.ExpectedRemoteList.numOfRemotes = 4;
 				
-				expectedRemotesPacket.msg.ExpectedRemoteList.remotes[0].weight = 6;
-				strcpy(expectedRemotesPacket.msg.ExpectedRemoteList.remotes[0].expectedString, "XR2-");
+				for (i = 0 ; i < 4 ; ++i)
+                                {
+                                expectedRemotesPacket.msg.ExpectedRemoteList.remotes[i].weight = 6;
+                                        rc = strcpy_s(expectedRemotesPacket.msg.ExpectedRemoteList.remotes[i].expectedString,sizeof(expectedRemotesPacket.msg.ExpectedRemoteList.remotes[i].expectedString), list[i]);
+                                        if(rc!=EOK)
+                                        {
+                                                ERR_CHK(rc);
+                                        }
+                                }
 				
-				expectedRemotesPacket.msg.ExpectedRemoteList.remotes[1].weight = 6;
-				strcpy(expectedRemotesPacket.msg.ExpectedRemoteList.remotes[1].expectedString, "XR5-");
-				
-				expectedRemotesPacket.msg.ExpectedRemoteList.remotes[2].weight = 6;
-				strcpy(expectedRemotesPacket.msg.ExpectedRemoteList.remotes[2].expectedString, "XR11-");
-                
-				expectedRemotesPacket.msg.ExpectedRemoteList.remotes[3].weight = 6;
-				strcpy(expectedRemotesPacket.msg.ExpectedRemoteList.remotes[3].expectedString, "XR13-");                
+								
 
 #ifdef RF4CE_GENMSO_API
                 IARM_Bus_Call(IARM_BUS_RFMGR_NAME, IARM_BUS_RFMGR_MsgRequest, (void *)&expectedRemotesPacket, sizeof(expectedRemotesPacket));

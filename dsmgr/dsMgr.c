@@ -57,6 +57,7 @@
 #include "dsDisplay.h"
 #include "dsAudioSettings.h"
 #include "dsAudio.h"
+#include "safec_lib.h"
 
 extern IARM_Result_t _dsSetResolution(void *arg);
 extern IARM_Result_t _dsGetResolution(void *arg);
@@ -503,6 +504,7 @@ static int _SetVideoPortResolution()
  */
 static int  _SetResolution(int* handle,dsVideoPortType_t PortType)
 {
+	errno_t rc = -1;
 	int _displayHandle = 0;
 	int numResolutions = 0,i=0;
 	int _handle = *handle;
@@ -545,8 +547,11 @@ static int  _SetResolution(int* handle,dsVideoPortType_t PortType)
 			 memset(&Edidparam,0,sizeof(Edidparam));
     			Edidparam.handle = _displayHandle;
 			_dsGetEDID(&Edidparam);
-			memcpy(&edidData, &Edidparam.edid, sizeof(Edidparam.edid));
-
+			rc = memcpy_s(&edidData,sizeof(edidData), &Edidparam.edid, sizeof(Edidparam.edid));
+			if(rc!=EOK)
+			{
+				ERR_CHK(rc);
+			}
 			dumpHdmiEdidInfo(&edidData);
 			numResolutions = edidData.numOfSupportedResolution;
 			__TIMESTAMP();printf("numResolutions is %d \r\n",numResolutions);
