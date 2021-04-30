@@ -212,6 +212,7 @@ static void _systemStateChangeHandler(const char *owner, IARM_EventId_t eventId,
 static IARM_Result_t _SetPowerState(void *arg);
 static IARM_Result_t _GetPowerState(void *arg);
 static IARM_Result_t _WareHouseReset(void *arg);
+static IARM_Result_t _WareHouseClear(void *arg);
 static IARM_Result_t _ColdFactoryReset(void *);
 static IARM_Result_t _FactoryReset(void *);
 static IARM_Result_t _UserFactoryReset(void *);
@@ -360,6 +361,8 @@ IARM_Result_t PWRMgr_Start(int argc, char *argv[])
     IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_SetPowerState, _SetPowerState);
     IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_GetPowerState, _GetPowerState);
     IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_WareHouseReset, _WareHouseReset);
+    IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_WareHouseClear, _WareHouseClear);
+
     IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_ColdFactoryReset, _ColdFactoryReset);
     IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_FactoryReset, _FactoryReset);
     IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_UserFactoryReset, _UserFactoryReset);
@@ -1198,6 +1201,18 @@ static IARM_Result_t _WareHouseReset(void *arg)
     IARM_Bus_PWRMgr_WareHouseReset_Param_t *param = (IARM_Bus_PWRMgr_WareHouseReset_Param_t *)arg;
     int ret = param->suppressReboot ? processWHResetNoReboot() : processWHReset();
     LOG("_WareHouseReset returned : %d\r\n", ret);
+    fflush(stdout);
+    if (ret == 0)
+       return IARM_RESULT_SUCCESS;
+    else
+       return IARM_RESULT_IPCCORE_FAIL;
+}
+
+static IARM_Result_t _WareHouseClear(void *arg)
+{
+    IARM_Bus_PWRMgr_WareHouseReset_Param_t *param = (IARM_Bus_PWRMgr_WareHouseReset_Param_t *)arg;
+    int ret = param->suppressReboot ? processWHClearNoReboot() : processWHClear();
+    LOG("_WareHouseClear returned : %d\r\n", ret);
     fflush(stdout);
     if (ret == 0)
        return IARM_RESULT_SUCCESS;

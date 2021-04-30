@@ -26,16 +26,34 @@
 **/
 
 
-int processColdFactoryReset();
-int processFactoryReset();
-int processWareHouseReset();
-int processWHReset();
-int processWHResetNoReboot();
-int processWHClear();
-int processWHClearNoReboot();
-int processCustomerReset();
-int processPersonalityReset();
-int processUserFactoryReset();
+#include <stdio.h>
+#include <stdlib.h>
+#include "resetModes.h"
+#include "pwrlogger.h"
+
+int processWHClear()
+{
+    /*Code copied from X1.. Needs modification*/
+    LOG("\n Clear: Processing Ware House Clear\n");
+    fflush(stdout);
+
+    system("echo 0 > /opt/.rebootFlag");
+    system("touch /tmp/.warehouse-clear"); 
+    system("echo `/bin/timestamp` ------------- Warehouse Clear  --------------- >> /opt/logs/receiver.log");
+    system("sh /lib/rdk/deviceReset.sh WAREHOUSE_CLEAR");
+
+    return 1;
+}
+
+int processWHClearNoReboot()
+{
+    LOG("\n Clear: Invoking Ware House Clear Request from APP\n");
+    fflush(stdout);
+
+    system("touch /tmp/.warehouse-clear");
+    return system("sh /lib/rdk/deviceReset.sh WAREHOUSE_CLEAR --suppressReboot");
+}
+
 
 /** @} */
 /** @} */
