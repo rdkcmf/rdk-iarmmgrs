@@ -329,6 +329,7 @@ function install()
 	elif [ $RDK_PLATFORM_SOC = "broadcom" ]; then
 		cp -v bin/irMgrMain ${RDK_FSROOT_PATH}mnt/nfs/env
 		cp -v bin/pwrMgrMain ${RDK_FSROOT_PATH}mnt/nfs/env    
+		cp -v bin/pwrstate_notifier ${RDK_FSROOT_PATH}mnt/nfs/env    
 		cp -v bin/sysMgrMain ${RDK_FSROOT_PATH}mnt/nfs/env
 		cp -v bin/dsMgrMain ${RDK_FSROOT_PATH}mnt/nfs/env
 		if [ ${RDK_PLATFORM_DEVICE} != "rng150" ];then

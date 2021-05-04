@@ -97,6 +97,7 @@ AC_CONFIG_FILES([Makefile
                  deviceUpdateMgr/Makefile
                  ir/Makefile
                  power/Makefile
+                 pwrstate/Makefile
                  deepsleepmgr/Makefile
                  test/Makefile
                  vrexmgr/Makefile

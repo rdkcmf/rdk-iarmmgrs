@@ -24,6 +24,7 @@ install_lib_dir := ../install/lib
 # List of Executable
 exe_ir              := ir/
 exe_power           := power/
+exe_pwrstate        := pwrstate/
 ifeq ($(COMCAST_PLATFORM),XI3)
 ifeq ($(PLATFORM_SOC),broadcom)
 exe_deepsleep       := deepsleepmgr/
@@ -48,6 +49,7 @@ exe_test            := test
 exe_mfr_test        := mfr/test_mfr
 exe_platform_ir     := ../soc/${PLATFORM_SOC}/ir
 exe_platform_power  := ../soc/${PLATFORM_SOC}/power
+exe_platform_pwrstate  := ../soc/${PLATFORM_SOC}/pwrstate
 exe_platform_fp     := ../soc/${PLATFORM_SOC}/fp
 ifeq ($(COMCAST_PLATFORM),XI3)
 ifeq ($(PLATFORM_SOC),broadcom)
@@ -56,12 +58,12 @@ endif
 endif
 
 ifneq ($(MFR_MGR_SUPPORT),nomfrmgr)
-executable := $(exe_platform_ir) $(exe_platform_power) $(exe_platform_fp) $(exe_ir) $(exe_power) $(exe_sysmgr) $(exe_tr69Bus) $(exe_test) $(exe_mfr) $(exe_ds)
+executable := $(exe_platform_ir) $(exe_platform_power) $(exe_platform_fp) $(exe_ir) $(exe_power) $(exe_platform_pwrstate) $(exe_pwrstate) $(exe_sysmgr) $(exe_tr69Bus) $(exe_test) $(exe_mfr) $(exe_ds)
 ifeq ($(COMCAST_PLATFORM), XI3)
 executable += $(exe_mfr_test)
 endif 
 else	
-executable := $(exe_platform_ir) $(exe_platform_power) $(exe_platform_fp) $(exe_ir) $(exe_power) $(exe_sysmgr) $(exe_tr69Bus) $(exe_test) $(exe_ds)
+executable := $(exe_platform_ir) $(exe_platform_power) $(exe_platform_fp) $(exe_ir) $(exe_power) $(exe_platform_pwrstate) $(exe_pwrstate) $(exe_sysmgr) $(exe_tr69Bus) $(exe_test) $(exe_ds)
 endif	
 
 ifneq ($(COMCAST_PLATFORM), RNG150)
@@ -110,6 +112,7 @@ endif
 endif
 	cp $(exe_sysmgr)/*Main $(install_dir)
 	cp $(exe_power)/*Main $(install_dir)
+	cp $(exe_pwrstate)/pwrstate_notifier $(install_dir)
 ifeq ($(COMCAST_PLATFORM),XI3)
 ifeq ($(PLATFORM_SOC),broadcom)
 	cp $(exe_deepsleep)/*Main $(install_dir)
