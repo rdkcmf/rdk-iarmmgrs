@@ -203,6 +203,24 @@ typedef struct _IARM_Bus_PWRMgr_GetTempThresholds_Param_t{
 
 #define IARM_BUS_PWRMGR_API_GetTemperatureThresholds   "GetTemperatureThresholds" /*!< Gets the thermal threshold  for the device*/
 
+/**
+ *  @brief Structure which holds the grace interval value to be set to the device.
+ */
+typedef struct _IARM_Bus_PWRMgr_SetOvertempGraceInterval_Param_t{
+     int graceInterval;                     /*!< New over teamparature grace interval  */
+} IARM_Bus_PWRMgr_SetOvertempGraceInterval_Param_t;
+
+#define IARM_BUS_PWRMGR_API_SetOvertempGraceInterval   "SetOvertempGraceInterval" /*!< Sets the over temparature grace interval for the device*/
+
+/**
+ *  @brief Structure which holds the data associated with  current over temparature grace interval.
+ */
+typedef struct _IARM_Bus_PWRMgr_GetOvertempGraceInterval_Param_t{
+     int graceInterval;                     /*!< New over temparature grace interval  */
+} IARM_Bus_PWRMgr_GetOvertempGraceInterval_Param_t;
+
+#define IARM_BUS_PWRMGR_API_GetOvertempGraceInterval   "GetOvertempGraceInterval" /*!< Gets the over temparature grace interval for the device*/
+
 /** @brief This function will be used to initialize thermal protection thread */
 extern void initializeThermalProtection();
 #endif //ENABLE_THERMAL_PROTECTION

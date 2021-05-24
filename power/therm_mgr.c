@@ -157,6 +157,14 @@ static IARM_Result_t _SetTemperatureThresholds(void *arg);
 */
 static IARM_Result_t _GetTemperatureThresholds(void *arg);
 /**
+* IARM call to set the grace interval
+*/
+static IARM_Result_t _SetOvertempGraceInterval(void *arg);
+/**
+* IARM call to get the grace interval
+*/
+static IARM_Result_t _GetOvertempGraceInterval(void *arg);
+/**
 * This function reads configuration details from relevant configuration files.
 */
 static bool read_ConfigProps();
@@ -192,6 +200,8 @@ void initializeThermalProtection()
         IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_GetThermalState, _GetThermalState);
         IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_SetTemperatureThresholds, _SetTemperatureThresholds);
         IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_GetTemperatureThresholds, _GetTemperatureThresholds);
+	IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_SetOvertempGraceInterval, _SetOvertempGraceInterval);
+        IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_GetOvertempGraceInterval, _GetOvertempGraceInterval);
 
         LOG("[%s] Thermal Monitor [REBOOT] Enabled: %s\n", __FUNCTION__, (thermal_reboot_grace_interval > 0) ? "TRUE" : "FALSE");
         if (thermal_reboot_grace_interval > 0) {
@@ -552,6 +562,51 @@ static IARM_Result_t _SetTemperatureThresholds(void *arg)
     }
     return retCode;
 
+}
+
+static IARM_Result_t _GetOvertempGraceInterval(void *arg)
+{
+    IARM_Result_t retCode = IARM_RESULT_SUCCESS;
+
+    if(NULL != arg)
+    {
+        IARM_Bus_PWRMgr_GetOvertempGraceInterval_Param_t * param = (IARM_Bus_PWRMgr_GetOvertempGraceInterval_Param_t *) arg;
+        {
+	    param->graceInterval = thermal_reboot_grace_interval;
+            retCode = IARM_RESULT_SUCCESS;
+            LOG("[PwrMgr] Current over temparature grace interval : %d\n", param->graceInterval);
+        }
+    }
+    else
+    {
+        retCode = IARM_RESULT_INVALID_PARAM;
+    }
+    return retCode;
+}
+
+static IARM_Result_t _SetOvertempGraceInterval(void *arg)
+{
+    IARM_Result_t retCode = IARM_RESULT_SUCCESS;
+    if(NULL != arg)
+    {
+        IARM_Bus_PWRMgr_SetOvertempGraceInterval_Param_t * param = (IARM_Bus_PWRMgr_SetOvertempGraceInterval_Param_t *) arg;
+	if(param->graceInterval >= 0 )
+	{
+            LOG("[PwrMgr] Setting over temparature grace interval : %d\n", param->graceInterval);
+	    thermal_reboot_grace_interval = param->graceInterval;
+	    thermal_deepsleep_grace_interval = param->graceInterval;
+            retCode = IARM_RESULT_SUCCESS;
+	}
+        else
+        {
+            retCode = IARM_RESULT_INVALID_PARAM;
+        }
+    }
+    else
+    {
+        retCode = IARM_RESULT_INVALID_PARAM;
+    }
+    return retCode;
 }
 
 static bool updateRFCStatus()
