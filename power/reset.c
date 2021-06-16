@@ -171,7 +171,7 @@ typedef struct KeyMap
 #define KEY_COMBINATION_TIMEOUT 2000
 #define POWER_KEY_HOLD_TIME_FOR_REBOOT 10000
 #define POWER_KEY_HOLD_TIME_FOR_RESET 2000
-#define RESET_KEY_HOLD_TIME_FOR_FACTORY_RESET 30000
+#define POWER_KEY_HOLD_TIME_FOR_FACTORY_RESET 30000
   
   
 /* Refer  https://www.teamccp.com/confluence/display/CE/Resets.
@@ -474,6 +474,16 @@ int checkResetSequence(int keyType, int keyCode)
                 }
                 if ((keyCode == KED_POWER) || (keyCode == KED_RF_POWER))
                 {
+#ifdef ENABLE_FACTORY_RESET_VIA_FP_POWER_BUTTON
+                    if((gKeyReleasedTime - gKeyPressedTime) >= POWER_KEY_HOLD_TIME_FOR_FACTORY_RESET)
+                    {
+                        __TIMESTAMP();LOG("\n Reset: Factory reset through long-pressing power key\n");
+                        fflush(stdout);
+                        processFactoryReset();
+                        ret = 1;
+                        return ret;
+                    }
+#else
                     if ((gKeyReleasedTime - gKeyPressedTime) > POWER_KEY_HOLD_TIME_FOR_REBOOT)
                     {
                         __TIMESTAMP();LOG("\n Reset: Inside reset mode 1\n");
@@ -483,6 +493,7 @@ int checkResetSequence(int keyType, int keyCode)
                         ret = 1; //mark the return value as triggered for reset.
                         return ret;
                     }
+#endif
                     else if ((gKeyReleasedTime - gKeyPressedTime) >= POWER_KEY_HOLD_TIME_FOR_RESET)
                     {
                         __TIMESTAMP();LOG("\n Reset: Inside reset mode 2\n");
@@ -513,15 +524,6 @@ int checkResetSequence(int keyType, int keyCode)
                     {
                         ResetResetState();
                     }
-                }
-                else if((gKeyReleasedTime - gKeyPressedTime) >= RESET_KEY_HOLD_TIME_FOR_FACTORY_RESET) //This is a reset key event.
-                {
-                    __TIMESTAMP();LOG("\n Reset: Factory reset through long-pressing reset key\n");
-                    fflush(stdout);
-                    processFactoryReset();
-
-                    ret = 1;
-                    return ret;
                 }
                 else
                 {
