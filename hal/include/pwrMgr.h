@@ -60,6 +60,7 @@ typedef enum _PWRMgr_EventId_t {
     IARM_BUS_PWRMGR_EVENT_MODECHANGED = 0,         /*!< Event to notify power mode change */
     IARM_BUS_PWRMGR_EVENT_DEEPSLEEP_TIMEOUT, /*!< Event to notify deepsleep timeout */
     IARM_BUS_PWRMGR_EVENT_RESET_SEQUENCE,        /*!< Event to notify progress of reset key sequence*/
+    IARM_BUS_PWRMGR_EVENT_REBOOTING,             /*!< Event to notify that the device is about to reboot.*/
 #ifdef ENABLE_THERMAL_PROTECTION
     IARM_BUS_PWRMGR_EVENT_THERMAL_MODECHANGED,        /*!< Event to notify temperature level change */
 #endif // ENABLE_THERMAL_PROTECTION
@@ -252,6 +253,19 @@ typedef struct _IARM_Bus_PWRMgr_NetworkStandbyMode_Param_t {
 typedef struct _IARM_Bus_PWRMgr_GetPowerStateBeforeReboot_Param_t {
     char powerStateBeforeReboot [MAX_PWR_STATE_BEF_REBOOR_STR_LEN];        /*!< Powerstate before reboot of the box*/ 
 } IARM_Bus_PWRMgr_GetPowerStateBeforeReboot_Param_t;
+
+
+#define PWRMGR_MAX_REBOOT_REASON_LENGTH 100
+#define PWRMGR_REBOOT_REASON_MAINTENANCE "MAINTENANCE_REBOOT"
+/**
+ *  @brief Structure to pass reboot reason argument with the reboot call.
+ */
+typedef struct _IARM_Bus_PWRMgr_RebootParam_t{
+     char reboot_reason_custom[PWRMGR_MAX_REBOOT_REASON_LENGTH];
+     char reboot_reason_other[PWRMGR_MAX_REBOOT_REASON_LENGTH];
+     char requestor[PWRMGR_MAX_REBOOT_REASON_LENGTH];
+} IARM_Bus_PWRMgr_RebootParam_t;
+#define IARM_BUS_PWRMGR_API_Reboot "performReboot" /*!< Reboots device.*/
 
 
 #ifdef __cplusplus

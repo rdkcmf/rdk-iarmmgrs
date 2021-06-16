@@ -399,6 +399,60 @@ static IARM_Result_t writeImage_(void *arg)
 
 }
 
+IARM_Result_t setBootloaderPattern_(void *arg)
+{
+    typedef mfrError_t (*mfrSetBootloaderPattern)(mfrBlPattern_t);
+#ifndef RDK_MFRLIB_NAME
+    LOG("Please define RDK_MFRLIB_NAME. Cannot resolve mfrSetBootloaderPattern without it.\n");
+    return IARM_RESULT_INVALID_STATE;
+#else
+    static mfrSetBootloaderPattern func = 0;
+    static int symbol_lookup_complete = 0;
+
+    if (func == 0) {
+        if(0 == symbol_lookup_complete) {
+            symbol_lookup_complete = 1;
+            void *dllib = dlopen(RDK_MFRLIB_NAME, RTLD_LAZY);
+            if (dllib) {
+                func = (mfrSetBootloaderPattern) dlsym(dllib, "mfrSetBootloaderPattern");
+                dlclose(dllib);
+                if (func) {
+                    LOG("mfrSetBootloaderPattern is defined and loaded\n");
+                }
+                else {
+                    LOG("mfrSetBootloaderPattern is not defined\n");
+                    return IARM_RESULT_INVALID_STATE;
+                }
+            }
+            else {
+                LOG("Opening RDK_MFRLIB_NAME [%s] failed\n", RDK_MFRLIB_NAME);
+                LOG("Exiting setBootloaderPattern_\n");
+                return IARM_RESULT_INVALID_STATE;
+            }
+        }
+        else
+        {
+            LOG("mfrSetBootloaderPattern is not defined\n");
+            return IARM_RESULT_INVALID_STATE;
+        }
+    }
+
+    IARM_Result_t retCode = IARM_RESULT_SUCCESS;
+    mfrError_t err = mfrERR_NONE;
+    IARM_Bus_MFRLib_SetBLPattern_Param_t *pParam = (IARM_Bus_MFRLib_SetBLPattern_Param_t *)arg;
+    
+    LOG("Calling mfrSetBootloaderPattern with setting 0x%x\n", pParam->pattern);
+    err = func(pParam->pattern);
+    if(mfrERR_NONE != err)
+    {
+        LOG("Calling mfrSetBootloaderPattern returned error 0x%x\n", err);
+        retCode = IARM_RESULT_INVALID_PARAM;
+    }
+    return retCode;      
+#endif
+}
+
+
 IARM_Result_t MFRLib_Start(void)
 {
     IARM_Result_t err = IARM_RESULT_SUCCESS;
@@ -457,6 +511,13 @@ IARM_Result_t MFRLib_Start(void)
         if(IARM_RESULT_SUCCESS != err)
         {
             LOG("Error registering call(writeImage) in IARM.. error code : %d\n",err);
+            break;
+        }
+
+        err = IARM_Bus_RegisterCall(IARM_BUS_MFRLIB_API_SetBootLoaderPattern, setBootloaderPattern_);
+        if(IARM_RESULT_SUCCESS != err)
+        {
+            LOG("Error registering call(setBootloaderPattern_) in IARM.. error code : %d\n",err);
             break;
         }
 #ifdef ENABLE_MFR_WIFI

@@ -34,6 +34,8 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <secure_wrapper.h>
+
 #include "comcastIrKeyCodes.h"
 #include "libIBus.h"
 #include "pwrMgr.h"
@@ -606,15 +608,55 @@ void PwrMgr_Reset(IARM_Bus_PWRMgr_PowerState_t newState, bool isFPKeyPress)
     LOG("\n PWR_Reset: Rebooting box now .....\r\n");
     if (newState == IARM_BUS_PWRMGR_POWERSTATE_ON) system("sh /togglePower");
 
-    system("echo 0 > /opt/.rebootFlag");
     if(!isFPKeyPress)
     {
-        system("sleep 5; /rebootNow.sh -s PowerMgr_Powerreset -o 'Rebooting the box due to ECM connectivity Loss...'");
+        performReboot("PowerMgr_Powerreset", nullptr, "Rebooting the box due to ECM connectivity Loss...");
     }
     else
     {
-        system("sleep 5; /rebootNow.sh -s PowerMgr_Powerreset -o 'Rebooting the box due to Frontpanel power key pressed for 10 sec...'");
+        performReboot("PowerMgr_Powerreset", nullptr, "Rebooting the box due to Frontpanel power key pressed for 10 sec...");
     }
 }
+
+inline static void check_payload(const char ** input, const char * default_arg)
+{
+    if((NULL == *input) || (0 == (*input)[0]))
+    {
+        *input = default_arg;
+    }
+    return;
+}
+
+void performReboot(const char * requestor, const char * reboot_reason_custom, const char * reboot_reason_other)
+{
+    LOG("performReboot: Rebooting box now. Requestor: %s. Reboot reason: %s\n", requestor, reboot_reason_custom);
+    const char * default_arg = "unknown";
+
+    check_payload(&requestor, default_arg);
+    check_payload(&reboot_reason_custom, default_arg);
+    check_payload(&reboot_reason_other, default_arg);
+    
+    IARM_Bus_PWRMgr_RebootParam_t eventData;
+    //Note: assumes caller has checked arg reboot_reason_custom and is safe to use.
+    strncpy(eventData.reboot_reason_custom, reboot_reason_custom, sizeof(eventData.reboot_reason_custom));
+    strncpy(eventData.reboot_reason_other, reboot_reason_other, sizeof(eventData.reboot_reason_other));
+    strncpy(eventData.requestor, requestor, sizeof(eventData.requestor));
+    eventData.reboot_reason_custom[sizeof(eventData.reboot_reason_custom) - 1] = '\0';
+    eventData.reboot_reason_other[sizeof(eventData.reboot_reason_other) - 1] = '\0';
+    eventData.requestor[sizeof(eventData.requestor) - 1] = '\0';
+    IARM_Bus_BroadcastEvent( IARM_BUS_PWRMGR_NAME, IARM_BUS_PWRMGR_EVENT_REBOOTING, (void *)&eventData, sizeof(eventData));
+
+    v_secure_system("echo 0 > /opt/.rebootFlag");
+    sleep(5);
+    if(0 == access("/rebootNow.sh", F_OK))
+    {
+        v_secure_system("/rebootNow.sh -s '%s' -r '%s' -o '%s'", requestor, reboot_reason_custom, reboot_reason_other);
+    }
+    else
+    {
+        v_secure_system("/lib/rdk/rebootNow.sh -s '%s' -r '%s' -o '%s'", requestor, reboot_reason_custom, reboot_reason_other);
+    }
+}
+
 /** @} */
 /** @} */

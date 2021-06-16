@@ -106,6 +106,7 @@
 #define IARM_BUS_MFRLIB_API_WriteImage        "mfrWriteImage"          /*!< Validate and  Write the image into flash*/
 #define IARM_BUS_MFRLIB_API_WIFI_EraseAllData     "mfrWifiEraseAllData"
 #define IARM_BUS_MFRLIB_API_WIFI_Credentials "mfrWifiCredentials"
+#define IARM_BUS_MFRLIB_API_SetBootLoaderPattern "mfrSetBootloaderPattern" /*!< Sets how the frontpanel LED(s) (and TV backlight on applicable devices) behave when running bootloader.*/
 
 #define IARM_BUS_MFRLIB_COMMON_API_WriteImageCb "WriteImageCb"         /*!< This method shall be implemented by the caller calling WriteImage*/
 
@@ -145,9 +146,9 @@ typedef struct _IARM_BUS_MFRLIB_API_WIFI_Credentials_Param_t{
 	WifiRequestType_t requestType;
 	WIFI_API_RESULT returnVal;	
 }IARM_BUS_MFRLIB_API_WIFI_Credentials_Param_t;
-
-
-
+typedef struct _IARM_Bus_MFRLib_SetBLPattern_Param_t{
+    mfrBlPattern_t pattern;
+} IARM_Bus_MFRLib_SetBLPattern_Param_t;
 
 #endif //_MFR_MGR_H_
 

@@ -73,6 +73,8 @@ extern "C"
 #include "rfcapi.h"
 #include "iarmcec.h"
 #include "deepSleepMgr.h"
+#include "productTraits.h"
+
 /* For glib APIs*/
 #include <glib.h>
 
@@ -151,6 +153,7 @@ typedef struct{
     bool isEnabled;
 }PWRMgr_Standby_Video_State_t;
 static PWRMgr_Standby_Video_State_t g_standby_video_port_setting[MAX_NUM_VIDEO_PORTS];
+static pwrMgrProductTraits::ux_controller * ux = nullptr;
 
 #ifdef _ENABLE_FP_KEY_SENSITIVITY_IMPROVEMENT
 #ifndef POWER_KEY_SENSITIVITY
@@ -217,6 +220,7 @@ static IARM_Result_t _ColdFactoryReset(void *);
 static IARM_Result_t _FactoryReset(void *);
 static IARM_Result_t _UserFactoryReset(void *);
 static IARM_Result_t _GetPowerStateBeforeReboot(void *arg);
+static IARM_Result_t _HandleReboot(void *arg);
 
 static int _InitSettings(const char *settingsFile);
 static int _WriteSettings(const char *settingsFile);
@@ -224,7 +228,7 @@ static void _DumpSettings(const PWRMgr_Settings_t *pSettings);
 
 static int _SetLEDStatus(IARM_Bus_PWRMgr_PowerState_t state);
 
-static int _SetAVPortsPowerState(IARM_Bus_PWRMgr_PowerState_t powerState);
+int _SetAVPortsPowerState(IARM_Bus_PWRMgr_PowerState_t powerState);
 static IARM_Bus_PWRMgr_PowerState_t _ConvertUIDevToIARMBusPowerState(UIDev_PowerState_t powerState);
 static IARM_Result_t _SetStandbyVideoState(void *arg);
 static IARM_Result_t _GetStandbyVideoState(void *arg);
@@ -241,6 +245,7 @@ static IARM_Bus_Daemon_SysMode_t isEASInProgress = IARM_BUS_SYS_MODE_NORMAL;
 GMainLoop *pwrMgr_Gloop = NULL;
 static gboolean heartbeatMsg(gpointer data);
 std::string powerStateBeforeReboot_gc;
+static IARM_Bus_PWRMgr_PowerState_t g_last_known_power_state = IARM_BUS_PWRMGR_POWERSTATE_ON;
 #ifdef ENABLE_DEEP_SLEEP  
 
     /* PwrMgr Static Functions for Deep SLeep feature */
@@ -339,6 +344,17 @@ IARM_Result_t PWRMgr_Start(int argc, char *argv[])
 	setvbuf(stdout, NULL, _IOLBF, 0);
     LOG("Entering [%s] - [%s] - disabling io redirect buf\r\n", __FUNCTION__,IARM_BUS_PWRMGR_NAME);
 
+#ifdef POWERMGR_PRODUCT_PROFILE_ID
+    if(true == pwrMgrProductTraits::ux_controller::initialize_ux_controller(POWERMGR_PRODUCT_PROFILE_ID))
+    {
+        ux = pwrMgrProductTraits::ux_controller::get_instance();
+    }
+#endif
+    if(nullptr == ux)
+    {
+        LOG("pwrmgr product traits not supported.\n");
+    }
+
     PLAT_INIT();
             
     IARM_Bus_Init(IARM_BUS_PWRMGR_NAME);
@@ -358,6 +374,7 @@ IARM_Result_t PWRMgr_Start(int argc, char *argv[])
     targetState = m_settings.powerState;
 #endif 
     IARM_Bus_RegisterEvent(IARM_BUS_PWRMGR_EVENT_MAX);
+    IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_Reboot, _HandleReboot);
     IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_SetPowerState, _SetPowerState);
     IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_GetPowerState, _GetPowerState);
     IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_WareHouseReset, _WareHouseReset);
@@ -1059,19 +1076,19 @@ static IARM_Result_t _SetPowerState(void *arg)
 		IARM_BusDaemon_PowerPrechange(powerPreChangeParam);
 		__TIMESTAMP();LOG("Power Mode Change from %s to %s end\n",powerstateString[curState],powerstateString[newState]);
 
-		if(newState != IARM_BUS_PWRMGR_POWERSTATE_ON){
+		if (nullptr != ux) //If ux_controller is supported, it will set up AV ports and LEDs in the below call.
+			ux->applyPowerStateChangeConfig(newState, curState);
+		else { // Since ux_controller is not supported, we needs to set up AV ports and LED here.
 			_SetAVPortsPowerState(newState);
 			_SetLEDStatus(newState);
+		}
 #ifdef OFFLINE_MAINT_REBOOT
+		if(newState != IARM_BUS_PWRMGR_POWERSTATE_ON){
+
 			standby_time = g_get_monotonic_time()/G_USEC_PER_SEC;
 			LOG("Power state changed at %lld\n", standby_time);
+		}
 #endif
-		}
-		else
-		{
-			_SetAVPortsPowerState(newState);
-			_SetLEDStatus(newState);
-		}
 
 		pSettings->powerState = newState;
 		_WriteSettings(m_settingsFile);
@@ -1195,6 +1212,24 @@ static IARM_Result_t _GetPowerStateBeforeReboot(void *arg)
     return IARM_RESULT_SUCCESS;
 }
 
+
+static IARM_Result_t _HandleReboot(void *arg)
+{
+    IARM_Bus_PWRMgr_RebootParam_t *param = (IARM_Bus_PWRMgr_RebootParam_t *)arg;
+    param->reboot_reason_custom[sizeof(param->reboot_reason_custom) - 1] = '\0'; //Just to be on the safe side.
+    param->reboot_reason_custom[sizeof(param->reboot_reason_other) - 1] = '\0';
+    param->requestor[sizeof(param->requestor) - 1] = '\0';
+
+    if(nullptr != ux)
+    {
+         if(0 == strncmp(PWRMGR_REBOOT_REASON_MAINTENANCE, param->reboot_reason_custom, sizeof(param->reboot_reason_custom)))
+            ux->applyPreMaintenanceRebootConfig(m_settings.powerState);
+         else
+            ux->applyPreRebootConfig(m_settings.powerState);
+    }
+    performReboot(param->requestor, param->reboot_reason_custom, param->reboot_reason_other);
+    return IARM_RESULT_SUCCESS;
+}
 
 static IARM_Result_t _WareHouseReset(void *arg)
 {
@@ -1369,6 +1404,7 @@ static int _InitSettings(const char *settingsFile)
                             pSettings->length = sizeof(PWRMgr_Settings_t) - PADDING_SIZE;
                             pSettings->powerState = 
                             _ConvertUIDevToIARMBusPowerState(uiMgrSettings.powerState);
+                            g_last_known_power_state = pSettings->powerState;
                            #ifdef ENABLE_DEEP_SLEEP
                                  pSettings->deep_sleep_timeout = deep_sleep_wakeup_timeout_sec;
                             #endif
@@ -1401,7 +1437,7 @@ static int _InitSettings(const char *settingsFile)
 							}
                             else
                             {
-
+                                g_last_known_power_state = pSettings->powerState;
                                 #ifdef ENABLE_DEEP_SLEEP
                                     deep_sleep_wakeup_timeout_sec = pSettings->deep_sleep_timeout;
                                     __TIMESTAMP();LOG("Persisted deep_sleep_delay = %d Secs \r\n",deep_sleep_wakeup_timeout_sec);
@@ -1437,6 +1473,7 @@ static int _InitSettings(const char *settingsFile)
                                /*TBD - The struct should be initialized first so that we dont need to add 
                                         manually the new fields. 
                                 */
+                               g_last_known_power_state = pSettings->powerState;
                                lseek(fd, 0, SEEK_SET);         
                                #ifdef ENABLE_DEEP_SLEEP
                                    pSettings->deep_sleep_timeout = deep_sleep_wakeup_timeout_sec;
@@ -1476,6 +1513,7 @@ static int _InitSettings(const char *settingsFile)
                             else
                             {
                                /*Update the length and truncate the file */
+                                g_last_known_power_state = pSettings->powerState;
                                 lseek(fd, 0, SEEK_SET);         
                                 pSettings->length = (sizeof(PWRMgr_Settings_t) - PADDING_SIZE );
                                 LOG("[PwrMgr] Write and Truncate  PwrMgr Settings File With Current  Data Length %d ........\r\n",pSettings->length);
@@ -1561,6 +1599,9 @@ static int _InitSettings(const char *settingsFile)
 
         /* Sync with platform if it is supported */
         {
+            if(nullptr != ux)
+                ux->applyPostRebootConfig(pSettings->powerState, g_last_known_power_state); // This will set up ports, lights and bootloader pattern internally.
+
        	    IARM_Bus_PWRMgr_PowerState_t state;
             ret = PLAT_API_GetPowerState(&state);
             if (ret == 0) {
@@ -1572,7 +1613,8 @@ static int _InitSettings(const char *settingsFile)
                     LOG("PowerState sync hardware state %d with UIMGR to %d\r\n", state, pSettings->powerState);
                     do {
                         loopCount++;
-                        _SetAVPortsPowerState(pSettings->powerState);
+                        if(nullptr == ux) // Since ux_controller is not supported, ports need to be set up explicitly.
+                            _SetAVPortsPowerState(pSettings->powerState);                        
                         ret = PLAT_API_SetPowerState(pSettings->powerState);
                         sleep(1);
                         PLAT_API_GetPowerState(&state);
@@ -1583,9 +1625,11 @@ static int _InitSettings(const char *settingsFile)
                         pSettings->powerState = state;
                     }
                 }
-      
-				_SetAVPortsPowerState(pSettings->powerState);
-                _SetLEDStatus(pSettings->powerState);
+                if(nullptr == ux) // Since ux_controller is not supported, ports need to be set up explicitly.
+                {
+                    _SetAVPortsPowerState(pSettings->powerState);
+                    _SetLEDStatus(pSettings->powerState);
+                }
 
                 if (fd >= 0) {
                     lseek(fd, 0, SEEK_SET);
@@ -1711,7 +1755,7 @@ static IARM_Bus_PWRMgr_PowerState_t _ConvertUIDevToIARMBusPowerState(UIDev_Power
     return ret;
 }
 
-static int _SetAVPortsPowerState(IARM_Bus_PWRMgr_PowerState_t powerState)
+int _SetAVPortsPowerState(IARM_Bus_PWRMgr_PowerState_t powerState)
 {
 
     try {

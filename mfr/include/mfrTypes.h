@@ -81,6 +81,13 @@ typedef enum _mfrUpgradeProgress_t {
 
 } mfrUpgradeProgress_t;
 
+typedef enum _mfrBlPattern_t
+{
+    mfrBL_PATTERN_NORMAL = 0,
+    mfrBL_PATTERN_SILENT,
+    mfrBL_PATTERN_SILENT_LED_ON
+} mfrBlPattern_t;
+
 typedef struct _mfrUpgradeStatus_t {
   mfrUpgradeProgress_t progress;
   mfrError_t error;
@@ -157,6 +164,13 @@ mfrError_t mfrDeletePDRI(void);
 */
 mfrError_t mfrScrubAllBanks(void);
 
+
+/**
+* @brief Sets how the frontpanel LED(s) (and TV backlight on applicable devices) behave when running bootloader.
+* @param [in] pattern : options are defined by enum mfrBlPattern_t.
+* @return Error Code:  Return mfrERR_NONE if operation is successful, mfrERR_GENERAL if it fails
+*/
+mfrError_t mfrSetBootloaderPattern(mfrBlPattern_t pattern);
 
 #endif
 

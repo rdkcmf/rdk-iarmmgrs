@@ -18,7 +18,7 @@
 ##########################################################################
 RM          := rm -rf
 CFLAGS      := -g -fPIC -D_REENTRANT -Wall
-OBJS        := $(patsubst %.c,%.o,$(wildcard *.c))
+OBJS        := $(patsubst %.c,%.o,$(wildcard *.c)) productTraits.o
 CPPLAGS      := -g -fPIC -D_REENTRANT -Wall
 EXECUTABLE  := pwrMgrMain
 
@@ -113,7 +113,11 @@ all:clean objs executable
 
 objs: $(OBJS)
 
-%.o: %.c
+%.o: %.c 
+	@echo "Building $@ ...."
+	$(CXX) -c $<  $(CFLAGS) -o $@
+
+%.o: %.cpp
 	@echo "Building $@ ...."
 	$(CXX) -c $<  $(CFLAGS) -o $@
 

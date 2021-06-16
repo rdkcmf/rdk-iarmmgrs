@@ -144,6 +144,7 @@ IARM_Result_t initReset();
 int checkResetSequence(int keyType, int keyCode);
 void setResetPowerState(IARM_Bus_PWRMgr_PowerState_t newPwrState);
 void PwrMgr_Reset(IARM_Bus_PWRMgr_PowerState_t newState, bool isFPKeyPress);
+void performReboot(const char * requestor, const char * reboot_reason_custom, const char * reboot_reason_other);
 
 #endif
 
