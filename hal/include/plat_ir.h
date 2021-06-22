@@ -44,6 +44,12 @@ extern "C" {
 typedef enum PLAT_xmp_tag {
    XMP_TAG_COMCAST = 0x00,
    XMP_TAG_PLATCO  = 0x01,
+   XMP_TAG_XR11V2  = 0x02,
+   XMP_TAG_XR15V1  = 0x03,
+   XMP_TAG_XR15V2  = 0x04,
+   XMP_TAG_XR16V1  = 0x05,
+   XMP_TAG_XRAV1   = 0x06,
+   XMP_TAG_XR20V1  = 0x07,
    XMP_TAG_UNDEFINED,
 } PLAT_xmp_tag_t;
 

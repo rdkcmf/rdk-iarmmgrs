@@ -238,6 +238,8 @@ typedef struct _IRMgr_EventData_t {
         	/* Declare Event Data structure for IRMGR_EVENT_DUMMY0 */
             int keyType;              /*!< Key type (UP/DOWN/REPEAT) */
             int keyCode;              /*!< Key code */ 
+            int keyTag;               /*!< key tag (identifies which remote) */
+            int keyOwner;             /*!< key owner (normal or pairing op) */
 			int isFP;					/*!< Key Source -- Remote/FP - TBD - Need to be removed after changing MPEOS*/ 
 			IARM_Bus_IRMgr_KeySrc_t keySrc;					/*!< Key Source -- FP,IR,Remote */
             unsigned int keySourceId;

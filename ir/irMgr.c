@@ -68,13 +68,6 @@ static const unsigned int gInitialWaitTimeout = 500;
 static unsigned int gRepeatKeyInterval = 50;
 static int numKeyRepeats = 0;
 static int keyLogStatus = 1;
-#ifdef XMP_TAG_OWNER_SUPPORT
-#ifdef PLATCO
-   static int expected_tag = XMP_TAG_PLATCO;
-#else
-   static int expected_tag = XMP_TAG_COMCAST;
-#endif
-#endif
 
 #ifndef NO_RF4CE
 #ifdef RF4CE_GENMSO_API
@@ -110,15 +103,17 @@ static bool isCecLocalLogicEnabled = false;
 /*Default is IR*/
 static bool bNeedRFKeyUp = false;
 
-static void _IrInputKeyEventHandler(int keyType, int keyCode, int keySrc, unsigned int keySrcId);
 static void* _KeyRepeatThreadFunc (void *arg);
 #ifdef XMP_TAG_OWNER_SUPPORT
    static void _IrKeyCallback(PLAT_irKey_metadata_t *irKey);
    static void _IrKeyPairing(PLAT_irKey_metadata *irKey);
+   static void _IrKeyCallbackFrom(PLAT_irKey_metadata *irKey, int keySrc, unsigned int keySrcId);
+   static void _IrInputKeyEventHandler(PLAT_irKey_metadata_t *irKey, int keySrc, unsigned int keySrcId);
 #else
    static void _IrKeyCallback(int keyType, int keyCode);
+   static void _IrKeyCallbackFrom(int keyType, int keyCode, int keySrc, unsigned int keySrcId);
+   static void _IrInputKeyEventHandler(int keyType, int keyCode, int keySrc, unsigned int keySrcId);
 #endif
-static void _IrKeyCallbackFrom(int keyType, int keyCode, int keySrc, unsigned int keySrcId);
 static void _logEventHandler(const char *owner, IARM_EventId_t eventId, void *data, size_t len);
 
 #ifndef NO_RF4CE
@@ -326,23 +321,18 @@ static void _IrKeyCallback(PLAT_irKey_metadata_t *irKey)
                                                             irKey->owner,
                                                             irKey->type,
                                                             irKey->code);
-
-   if (irKey->tag != expected_tag)
+#ifdef PLATCO
+   if (irKey->tag != XMP_TAG_PLATCO)
    {
-      __TIMESTAMP(); LOG("IR Key tag is invalid (%x != %x)\n", irKey->tag, expected_tag);
+      __TIMESTAMP(); LOG("IR Key tag is invalid (%x != %x)\n", irKey->tag, XMP_TAG_PLATCO);
       return;
-   }
-
-   if (expected_tag == XMP_TAG_COMCAST)
-   {
-      _IrKeyCallbackFrom(irKey->type, irKey->code, IARM_BUS_IRMGR_KEYSRC_IR, 0x0);
    }
    else
    {
       switch (irKey->owner)
       {
          case XMP_OWNER_NORMAL:
-            _IrKeyCallbackFrom(irKey->type, irKey->code, IARM_BUS_IRMGR_KEYSRC_IR, 0x0);
+            _IrKeyCallbackFrom(irKey, IARM_BUS_IRMGR_KEYSRC_IR, 0x0);
             break;
          case XMP_OWNER_PAIRING:
             _IrKeyPairing(irKey);
@@ -353,6 +343,44 @@ static void _IrKeyCallback(PLAT_irKey_metadata_t *irKey)
             break;
       }
    }
+#else
+   bool tag_is_valid   = true;
+   bool owner_is_valid = false;
+
+   switch (irKey->owner)
+   {
+      case XMP_OWNER_NORMAL:
+      case XMP_OWNER_PAIRING:
+         owner_is_valid = true;
+         break;
+      case XMP_OWNER_UNDEFINED:
+      default:
+         __TIMESTAMP(); LOG("Unknown owner field %x\n", irKey->owner);
+         break;
+   }
+
+   switch (irKey->tag)
+   {
+      case XMP_TAG_PLATCO:
+         tag_is_valid = false;
+         break;
+      case XMP_TAG_COMCAST:
+      case XMP_TAG_XR11V2:
+      case XMP_TAG_XR15V1:
+      case XMP_TAG_XR15V2:
+      case XMP_TAG_XR16V1:
+      case XMP_TAG_XRAV1:
+      case XMP_TAG_XR20V1:
+         break;
+      default:
+         __TIMESTAMP(); LOG("Unknown tag field %x\n", irKey->tag);
+         break;
+   }
+
+   if (tag_is_valid && owner_is_valid) {
+      _IrKeyCallbackFrom(irKey, IARM_BUS_IRMGR_KEYSRC_IR, 0x0);
+   }
+#endif
 }
 
 static void _IrKeyPairing(PLAT_irKey_metadata_t *irKey)
@@ -405,9 +433,16 @@ static void _IrKeyPairing(PLAT_irKey_metadata_t *irKey)
 }
 #endif
 
+#ifndef XMP_TAG_OWNER_SUPPORT
 static void _IrKeyCallbackFrom(int keyType, int keyCode, int keySrc, unsigned int keySrcId)
+#else
+static void _IrKeyCallbackFrom(PLAT_irKey_metadata_t *irKey,  int keySrc, unsigned int keySrcId)
+#endif
 {
-
+#ifdef XMP_TAG_OWNER_SUPPORT
+    int keyType = irKey->type;
+    int keyCode = irKey->code;
+#endif
     /**
      * Ignore all the repeat keys that is trigger by MAF and instead handle only PRESS & RELEASE.
      * The _KeyRepeatThreadFunc will manage posting KET_KEYREPEAT keys.
@@ -418,7 +453,11 @@ static void _IrKeyCallbackFrom(int keyType, int keyCode, int keySrc, unsigned in
         gCurrentKeyCode = keyCode;
         gCurrentKeySrcId = keySrcId;
 
+#ifndef XMP_TAG_OWNER_SUPPORT
         _IrInputKeyEventHandler (keyType, keyCode, keySrc, keySrcId);
+#else
+        _IrInputKeyEventHandler (irKey, keySrc, keySrcId);
+#endif
         pthread_cond_signal(&tMutexCond);
         pthread_mutex_unlock(&tMutexLock);
     }
@@ -428,13 +467,15 @@ static void _IrKeyCallbackFrom(int keyType, int keyCode, int keySrc, unsigned in
         gCurrentKeyCode = KED_UNDEFINEDKEY;
         gCurrentKeySrcId = keySrcId;
 
+#ifndef XMP_TAG_OWNER_SUPPORT
         _IrInputKeyEventHandler (keyType, keyCode, keySrc, keySrcId);
+#else
+        _IrInputKeyEventHandler (irKey, keySrc, keySrcId);
+#endif
         pthread_cond_signal(&tMutexCond);
         pthread_mutex_unlock(&tMutexLock);
     }
 }
-
-
 
 /**
  * @brief Calback funtion to that is registered with MAF to get notified for the key press
@@ -449,9 +490,17 @@ static void _IrKeyCallbackFrom(int keyType, int keyCode, int keySrc, unsigned in
  * 
  * @return None
  */
+#ifndef XMP_TAG_OWNER_SUPPORT
 static void _IrInputKeyEventHandler(int keyType, int keyCode , int keySrc, unsigned int keySrcId)
+#else
+static void _IrInputKeyEventHandler(PLAT_irKey_metadata_t *irKey, int keySrc, unsigned int keySrcId)
+#endif
 {
-     static IARM_Bus_IRMgr_EventData_t prevEventData = { { { KET_KEYUP , KED_UNDEFINEDKEY, 0, IARM_BUS_IRMGR_KEYSRC_IR } } } ;
+     static IARM_Bus_IRMgr_EventData_t prevEventData = { { { KET_KEYUP , KED_UNDEFINEDKEY, XMP_TAG_UNDEFINED, XMP_OWNER_UNDEFINED, 0, IARM_BUS_IRMGR_KEYSRC_IR } } } ;
+#ifdef XMP_TAG_OWNER_SUPPORT
+     int keyType = irKey->type;
+     int keyCode = irKey->code;
+#endif
      static bool xr15_or_newer_notify_call = false;
 
      if(0 != keyLogStatus)
@@ -590,7 +639,13 @@ static void _IrInputKeyEventHandler(int keyType, int keyCode , int keySrc, unsig
             {
                 if (keyCode == KED_PUSH_TO_TALK && xr15_or_newer_notify_call == false)
                 {
+#ifndef XMP_TAG_OWNER_SUPPORT
                     _IrInputKeyEventHandler(KET_KEYDOWN, KED_XR11_NOTIFY, keySrc, keySrcId);
+#else
+                    irKey->type = KET_KEYDOWN;
+                    irKey->code = KED_XR11_NOTIFY;
+                    _IrInputKeyEventHandler(irKey, keySrc, keySrcId);
+#endif
                 }
 
                 LOG("IR Control Event: keyCode: 0x%x, keySrc: 0x%x.\n", keyCode, keySrc);
@@ -598,6 +653,13 @@ static void _IrInputKeyEventHandler(int keyType, int keyCode , int keySrc, unsig
                 IARM_Bus_IRMgr_EventData_t eventData;
                 eventData.data.irkey.keyType = KET_KEYDOWN;
                 eventData.data.irkey.keyCode = keyCode;
+#ifdef XMP_TAG_OWNER_SUPPORT
+                eventData.data.irkey.keyTag = irKey->tag;
+                eventData.data.irkey.keyOwner = irKey->owner;
+#else
+                eventData.data.irkey.keyTag = XMP_TAG_UNDEFINED;
+                eventData.data.irkey.keyOwner = XMP_OWNER_UNDEFINED;
+#endif
                 eventData.data.irkey.keySrc = (IARM_Bus_IRMgr_KeySrc_t)keySrc;
                 eventData.data.irkey.keySourceId = keySrcId;
                 IARM_Bus_BroadcastEvent(IARM_BUS_IRMGR_NAME, (IARM_EventId_t) IARM_BUS_IRMGR_EVENT_CONTROL, (void *)&eventData, sizeof(eventData));
@@ -626,7 +688,11 @@ static void _IrInputKeyEventHandler(int keyType, int keyCode , int keySrc, unsig
                 if(bLastTimerRunning == false)
                 {
                     //Start LAST key timer thread
+#ifndef XMP_TAG_OWNER_SUPPORT
                     pthread_create (&eLASTKeyTimerThreadID, NULL, _LASTKeyTimerThreadFunc, NULL);
+#else
+                    pthread_create (&eLASTKeyTimerThreadID, NULL, _LASTKeyTimerThreadFunc, (void *)irKey);
+#endif
                 }
 
                 pthread_mutex_unlock(&tKeySeqMutex);
@@ -648,6 +714,13 @@ static void _IrInputKeyEventHandler(int keyType, int keyCode , int keySrc, unsig
                     // Send Key Down
                     eventData.data.irkey.keyType = KET_KEYDOWN;
                     eventData.data.irkey.keyCode = KED_LAST;
+#ifdef XMP_TAG_OWNER_SUPPORT
+                    eventData.data.irkey.keyTag = irKey->tag;
+                    eventData.data.irkey.keyOwner = irKey->owner;
+#else
+                    eventData.data.irkey.keyTag = XMP_TAG_UNDEFINED;
+                    eventData.data.irkey.keyOwner = XMP_OWNER_UNDEFINED;
+#endif
                     eventData.data.irkey.isFP = 0; 
                     eventData.data.irkey.keySrc = (_IRMgr_KeySrc_t)keySrc;
                     eventData.data.irkey.keySourceId = keySrcId;
@@ -672,7 +745,13 @@ static void _IrInputKeyEventHandler(int keyType, int keyCode , int keySrc, unsig
         case  KED_SELECT:
             if ((KET_KEYDOWN == keyType) && (xr15_or_newer_notify_call == false) && (keySrc == IARM_BUS_IRMGR_KEYSRC_IR))
             {
+#ifndef XMP_TAG_OWNER_SUPPORT
                 _IrInputKeyEventHandler(KET_KEYDOWN, KED_XR11_NOTIFY, keySrc, keySrcId);
+#else
+                irKey->type = KET_KEYDOWN;
+                irKey->code = KED_XR11_NOTIFY;
+                _IrInputKeyEventHandler(irKey, keySrc, keySrcId);
+#endif
             }
             break;
         case KED_XR15V1_PUSH_TO_TALK:
@@ -680,7 +759,13 @@ static void _IrInputKeyEventHandler(int keyType, int keyCode , int keySrc, unsig
             if (KET_KEYDOWN == keyType)
             {
                 xr15_or_newer_notify_call = true;
+#ifndef XMP_TAG_OWNER_SUPPORT
                 _IrInputKeyEventHandler(KET_KEYDOWN, KED_XR15V1_NOTIFY, keySrc, keySrcId);
+#else
+                irKey->type = KET_KEYDOWN;
+                irKey->code = KED_XR15V1_NOTIFY;
+                _IrInputKeyEventHandler(irKey, keySrc, keySrcId);
+#endif
                 gCurrentKeyCode = KED_PUSH_TO_TALK;
             }
             else
@@ -688,14 +773,26 @@ static void _IrInputKeyEventHandler(int keyType, int keyCode , int keySrc, unsig
                 xr15_or_newer_notify_call = false;
                 gCurrentKeyCode = KED_UNDEFINEDKEY;
             }
+#ifndef XMP_TAG_OWNER_SUPPORT
             _IrInputKeyEventHandler(keyType, KED_PUSH_TO_TALK, keySrc, keySrcId);
+#else
+            irKey->type = keyType;
+            irKey->code = KED_PUSH_TO_TALK;
+            _IrInputKeyEventHandler(irKey, keySrc, keySrcId);
+#endif
             return;
         case KED_XR15V1_SELECT:
             LOG_TRANSLATE_EVENT(KED_XR15V1_SELECT, KED_SELECT);
             if (KET_KEYDOWN == keyType)
             {
                 xr15_or_newer_notify_call = true;
+#ifndef XMP_TAG_OWNER_SUPPORT
                 _IrInputKeyEventHandler(KET_KEYDOWN, KED_XR15V1_NOTIFY, keySrc, keySrcId);
+#else
+                irKey->type = KET_KEYDOWN;
+                irKey->code = KED_XR15V1_NOTIFY;
+                _IrInputKeyEventHandler(irKey, keySrc, keySrcId);
+#endif
                 gCurrentKeyCode = KED_SELECT;
             }
             else
@@ -703,14 +800,26 @@ static void _IrInputKeyEventHandler(int keyType, int keyCode , int keySrc, unsig
                 xr15_or_newer_notify_call = false;
                 gCurrentKeyCode = KED_UNDEFINEDKEY;
             }
+#ifndef XMP_TAG_OWNER_SUPPORT
             _IrInputKeyEventHandler(keyType, KED_SELECT, keySrc, keySrcId);
+#else
+            irKey->type = keyType;
+            irKey->code = KED_SELECT;
+            _IrInputKeyEventHandler(irKey, keySrc, keySrcId);
+#endif
             return;
         case KED_XR16V1_PUSH_TO_TALK:
             LOG_TRANSLATE_EVENT(KED_XR16V1_PUSH_TO_TALK, KED_PUSH_TO_TALK);
             if (KET_KEYDOWN == keyType)
             {
                 xr15_or_newer_notify_call = true;
+#ifndef XMP_TAG_OWNER_SUPPORT
                 _IrInputKeyEventHandler(KET_KEYDOWN, KED_XR16V1_NOTIFY, keySrc, keySrcId);
+#else
+                irKey->type = KET_KEYDOWN;
+                irKey->code = KED_XR16V1_NOTIFY;
+                _IrInputKeyEventHandler(irKey, keySrc, keySrcId);
+#endif
                 gCurrentKeyCode = KED_PUSH_TO_TALK;
             }
             else
@@ -718,14 +827,26 @@ static void _IrInputKeyEventHandler(int keyType, int keyCode , int keySrc, unsig
                 xr15_or_newer_notify_call = false;
                 gCurrentKeyCode = KED_UNDEFINEDKEY;
             }
+#ifndef XMP_TAG_OWNER_SUPPORT
             _IrInputKeyEventHandler(keyType, KED_PUSH_TO_TALK, keySrc, keySrcId);
+#else
+            irKey->type = keyType;
+            irKey->code = KED_PUSH_TO_TALK;
+            _IrInputKeyEventHandler(irKey, keySrc, keySrcId);
+#endif
             return;
         case KED_XR16V1_SELECT:
             LOG_TRANSLATE_EVENT(KED_XR16V1_SELECT, KED_SELECT);
             if (KET_KEYDOWN == keyType)
             {
                 xr15_or_newer_notify_call = true;
+#ifndef XMP_TAG_OWNER_SUPPORT
                 _IrInputKeyEventHandler(KET_KEYDOWN, KED_XR16V1_NOTIFY, keySrc, keySrcId);
+#else
+                irKey->type = KET_KEYDOWN;
+                irKey->code = KED_XR16V1_NOTIFY;
+                _IrInputKeyEventHandler(irKey, keySrc, keySrcId);
+#endif
                 gCurrentKeyCode = KED_SELECT;
             }
             else
@@ -733,7 +854,13 @@ static void _IrInputKeyEventHandler(int keyType, int keyCode , int keySrc, unsig
                 xr15_or_newer_notify_call = false;
                 gCurrentKeyCode = KED_UNDEFINEDKEY;
             }
+#ifndef XMP_TAG_OWNER_SUPPORT
             _IrInputKeyEventHandler(keyType, KED_SELECT, keySrc, keySrcId);
+#else
+            irKey->type = keyType;
+            irKey->code = KED_SELECT;
+            _IrInputKeyEventHandler(irKey, keySrc, keySrcId);
+#endif
             return;
 
         default: 
@@ -749,6 +876,13 @@ static void _IrInputKeyEventHandler(int keyType, int keyCode , int keySrc, unsig
         {
             eventData.data.irkey.keyType = KET_KEYUP;
             eventData.data.irkey.keyCode = prevEventData.data.irkey.keyCode;
+#ifdef XMP_TAG_OWNER_SUPPORT
+            eventData.data.irkey.keyTag = irKey->tag;
+            eventData.data.irkey.keyOwner = irKey->owner;
+#else
+            eventData.data.irkey.keyTag = XMP_TAG_UNDEFINED;
+            eventData.data.irkey.keyOwner = XMP_OWNER_UNDEFINED;
+#endif
             eventData.data.irkey.isFP = prevEventData.data.irkey.isFP; 
             eventData.data.irkey.keySrc = prevEventData.data.irkey.keySrc;
             eventData.data.irkey.keySourceId = keySrcId;
@@ -762,6 +896,13 @@ static void _IrInputKeyEventHandler(int keyType, int keyCode , int keySrc, unsig
                 eventData.data.irkey.keySourceId = keySrcId;
 		eventData.data.irkey.isFP = (keyCode == KED_POWER) ? 1:0; /*1 -> Front Panel , 0 -> IR or RF*/
 		eventData.data.irkey.keySrc = (keyCode == KED_POWER) ? IARM_BUS_IRMGR_KEYSRC_FP:(_IRMgr_KeySrc_t)keySrc; 
+#ifdef XMP_TAG_OWNER_SUPPORT
+        eventData.data.irkey.keyTag = irKey->tag;
+        eventData.data.irkey.keyOwner = irKey->owner;
+#else
+        eventData.data.irkey.keyTag = XMP_TAG_UNDEFINED;
+        eventData.data.irkey.keyOwner = XMP_OWNER_UNDEFINED;
+#endif
        
 		/*Default to IR*/
 		prevEventData.data.irkey.isFP = (keyCode == KED_POWER) ? 1:0; /*1 -> Front Panel , 0 -> IR or RF*/
@@ -769,6 +910,13 @@ static void _IrInputKeyEventHandler(int keyType, int keyCode , int keySrc, unsig
 		prevEventData.data.irkey.keyType = keyType;
                 prevEventData.data.irkey.keySourceId = keySrcId;
         prevEventData.data.irkey.keyCode = keyCode;
+#ifdef XMP_TAG_OWNER_SUPPORT
+        prevEventData.data.irkey.keyTag = irKey->tag;
+        prevEventData.data.irkey.keyOwner = irKey->owner;
+#else
+        eventData.data.irkey.keyTag = XMP_TAG_UNDEFINED;
+        eventData.data.irkey.keyOwner = XMP_OWNER_UNDEFINED;
+#endif
         IARMCEC_SendCECActiveSource(isCecLocalLogicEnabled,keyType,keyCode);
 #ifdef _DISABLE_KEY_POWEROFF    //XITHREE-7832
         bool broadcastEvent = true;
@@ -1003,6 +1151,9 @@ int getTimeMs(){
 
 static void* _LASTKeyTimerThreadFunc(void *arg)
 {
+#ifdef XMP_TAG_OWNER_SUPPORT
+    PLAT_irKey_metadata_t *irKey = (PLAT_irKey_metadata_t *)arg;
+#endif
     int i;
     useconds_t usecondsToWait = 50000;
     bool bSendExitKey = true;
@@ -1039,6 +1190,13 @@ static void* _LASTKeyTimerThreadFunc(void *arg)
         LOG("Sending EXIT key instead of LAST\n");
         eventData.data.irkey.keyType = KET_KEYDOWN;
         eventData.data.irkey.keyCode = KED_EXIT;
+#ifdef XMP_TAG_OWNER_SUPPORT
+        eventData.data.irkey.keyTag = irKey->tag;
+        eventData.data.irkey.keyOwner = irKey->owner;
+#else
+        eventData.data.irkey.keyTag = XMP_TAG_UNDEFINED;
+        eventData.data.irkey.keyOwner = XMP_OWNER_UNDEFINED;
+#endif
         eventData.data.irkey.isFP = 0; 
         eventData.data.irkey.keySrc = (_IRMgr_KeySrc_t)LASTkeySrc;
         eventData.data.irkey.keySourceId = gCurrentKeySrcId;
@@ -1105,7 +1263,12 @@ static void* _KeyRepeatThreadFunc (void *arg)
                  * Post atleast one REPEAT key when the timeout is set to zero by the
                  * UIDev_SetRepeatInterval() by the clients
                  */
+#ifndef XMP_TAG_OWNER_SUPPORT
                 _IrInputKeyEventHandler (KET_KEYREPEAT, gCurrentKeyCode, IARM_BUS_IRMGR_KEYSRC_IR, gCurrentKeySrcId);
+#else
+                PLAT_irKey_metadata_t irKey = {KET_KEYREPEAT, gCurrentKeyCode, XMP_TAG_COMCAST, XMP_OWNER_NORMAL};
+                _IrInputKeyEventHandler (&irKey, IARM_BUS_IRMGR_KEYSRC_IR, gCurrentKeySrcId);
+#endif
             }
         }
 
@@ -1137,7 +1300,12 @@ static void* _KeyRepeatThreadFunc (void *arg)
                         if(numKeyRepeats > MAX_KEY_REPEATS)
                         {
                             __TIMESTAMP(); LOG ("******** Lost connection to rf4ceMgr. Sending Up key...\n");
+#ifndef XMP_TAG_OWNER_SUPPORT
                             _IrInputKeyEventHandler(KET_KEYUP, gCurrentKeyCode, IARM_BUS_IRMGR_KEYSRC_IR, gCurrentKeySrcId);
+#else
+                            PLAT_irKey_metadata_t irKey = {KET_KEYUP, gCurrentKeyCode, XMP_TAG_COMCAST, XMP_OWNER_NORMAL};
+                            _IrInputKeyEventHandler(&irKey, IARM_BUS_IRMGR_KEYSRC_IR, gCurrentKeySrcId);
+#endif
                             gCurrentKeyCode = KED_UNDEFINEDKEY;
                             numKeyRepeats = 0;
                             bNeedRFKeyUp = false;
@@ -1146,14 +1314,24 @@ static void* _KeyRepeatThreadFunc (void *arg)
                         else
                         {
                             __TIMESTAMP(); LOG ("Post Repeat RF key...\n");
+#ifndef XMP_TAG_OWNER_SUPPORT
                             _IrInputKeyEventHandler(KET_KEYREPEAT, gCurrentKeyCode,IARM_BUS_IRMGR_KEYSRC_RF, gCurrentKeySrcId);
+#else
+                            PLAT_irKey_metadata_t irKey = {KET_KEYREPEAT, gCurrentKeyCode, XMP_TAG_COMCAST, XMP_OWNER_NORMAL};
+                            _IrInputKeyEventHandler(&irKey, IARM_BUS_IRMGR_KEYSRC_RF, gCurrentKeySrcId);
+#endif
                         } 
                     }
                     //Else this is IR
                     else
                     {
                         __TIMESTAMP(); LOG ("Post Repeat key...\n");
+#ifndef XMP_TAG_OWNER_SUPPORT
                         _IrInputKeyEventHandler(KET_KEYREPEAT, gCurrentKeyCode,IARM_BUS_IRMGR_KEYSRC_IR, gCurrentKeySrcId);
+#else
+                        PLAT_irKey_metadata_t irKey = {KET_KEYREPEAT, gCurrentKeyCode, XMP_TAG_COMCAST, XMP_OWNER_NORMAL};
+                        _IrInputKeyEventHandler(&irKey, IARM_BUS_IRMGR_KEYSRC_IR, gCurrentKeySrcId);
+#endif
                     }
                 }
                 else
@@ -1458,7 +1636,12 @@ static void _ctrlmEventHandler(const char *owner, IARM_EventId_t eventId, void *
     else
         bNeedRFKeyUp = true;
 
+#ifndef XMP_TAG_OWNER_SUPPORT
     _IrKeyCallbackFrom(keyType, keyCode, IARM_BUS_IRMGR_KEYSRC_RF, remoteId);
+#else
+    PLAT_irKey_metadata_t irKey = {keyType, keyCode, XMP_TAG_COMCAST, XMP_OWNER_NORMAL};
+    _IrKeyCallbackFrom(&irKey, IARM_BUS_IRMGR_KEYSRC_RF, remoteId);
+#endif
 
 }
 #else
@@ -1491,8 +1674,12 @@ static void _rfEventHandler(const char *owner, IARM_EventId_t eventId, void *dat
         else
             bNeedRFKeyUp = true;
 
+#ifndef XMP_TAG_OWNER_SUPPORT
 	_IrKeyCallbackFrom(keyType, keyCode, IARM_BUS_IRMGR_KEYSRC_RF, remoteId);
-
+#else
+    PLAT_irKey_metadata_t irKey = {keyType, keyCode, XMP_TAG_COMCAST, XMP_OWNER_NORMAL};
+    _IrKeyCallbackFrom(&irKey, IARM_BUS_IRMGR_KEYSRC_RF, remoteId);
+#endif
 }
 #elif defined(RF4CE_API)
 static void _rf4ceEventHandler(const char *owner, IARM_EventId_t eventId, void *data, size_t len)
@@ -1524,7 +1711,12 @@ static void _rf4ceEventHandler(const char *owner, IARM_EventId_t eventId, void *
     else
         bNeedRFKeyUp = true;
 
+#ifndef XMP_TAG_OWNER_SUPPORT
 	_IrKeyCallbackFrom(keyType, keyCode, IARM_BUS_IRMGR_KEYSRC_RF, remoteId);
+#else
+    PLAT_irKey_metadata_t irKey = {keyType, keyCode, XMP_TAG_COMCAST, XMP_OWNER_NORMAL};
+    _IrKeyCallbackFrom(&irKey, IARM_BUS_IRMGR_KEYSRC_RF, remoteId);
+#endif
 
 }
 #elif defined(RF4CE_GPMSO_API)
@@ -1557,7 +1749,12 @@ static void _gpEventHandler(const char *owner, IARM_EventId_t eventId, void *dat
     else
         bNeedRFKeyUp = true;
 
+#ifndef XMP_TAG_OWNER_SUPPORT
 	_IrKeyCallbackFrom(keyType, keyCode, IARM_BUS_IRMGR_KEYSRC_RF, remoteId);
+#else
+    PLAT_irKey_metadata_t irKey = {keyType, keyCode, XMP_TAG_COMCAST, XMP_OWNER_NORMAL};
+    _IrKeyCallbackFrom(&irKey, IARM_BUS_IRMGR_KEYSRC_RF, remoteId);
+#endif
 
 }
 #else
