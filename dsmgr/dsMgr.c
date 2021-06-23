@@ -494,6 +494,7 @@ static int _SetVideoPortResolution()
  * @brief This Function does following :
  *   Read Persisted resolution 
  *   Verify Persisted resolution with Platform and EDID resolution 
+ *   If fails set best EDID resolution supported by platform 
  *   If fails Default to 720P
  * 	 If 720p is not supported by TV , Default to 480p
  *  @param void pointer Device Handle
@@ -579,7 +580,33 @@ static int  _SetResolution(int* handle,dsVideoPortType_t PortType)
 					break;
 				}
 			}
-
+                        /*
+                        * The Persisted Resolution Does not matches with TV resolution list 
+			*  Set  the Best Resolution Supported by TV and Platform
+			*/
+                        if (false == IsValidResolution)
+			{
+                        	/* Set  the Best Resolution Supported by TV and Platform*/
+                		for (i = numResolutions-1; i >= 0; i--)
+                		{
+                        		setResn = &(edidData.suppResolutionList[i]);
+                        		size_t pNumResolutions = dsUTL_DIM(kResolutions);
+                        		for (size_t j = pNumResolutions-1; j >=0; j--)
+		        		{
+		                		dsVideoPortResolution_t *pfResolution = &kResolutions[j];
+		                		if (0 == (strcmp(pfResolution->name,setResn->name)))
+		                		{
+		                			__TIMESTAMP();printf("[DsMgr] Set Best TV Supported Resolution %s \r\n",pfResolution->name);
+		                			IsValidResolution = true;
+		                    			break;
+		                		}
+                                        }
+                                	if (IsValidResolution)
+                                	{
+                                		break;
+                                        }
+                                }
+                        }
 			/* 
 				* The Persisted Resolution Does not matches with TV and Platform 
 				* Resolution List
