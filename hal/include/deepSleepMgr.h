@@ -117,7 +117,7 @@ void PLAT_DS_TERM(void);
  */
 #define IARM_BUS_DEEPSLEEPMGR_API_SetDeepSleepTimer		"SetDeepSleepTimer" 
 #define IARM_BUS_DEEPSLEEPMGR_API_GetLastWakeupReason		"GetLastWakeupReason"
-
+#define IARM_BUS_DEEPSLEEPMGR_API_GetLastWakeupKeyCode		"GetLastWakeupKeycode"
 /**
  * @brief Structure which holds the Deep sleep manager timeout.
  */
@@ -147,8 +147,12 @@ typedef enum _DeepSleep_WakeupReason_t
    DEEPSLEEP_WAKEUPREASON_UNKNOWN
 }DeepSleep_WakeupReason_t;
 
-int  PLAT_DS_GetLastWakeupReason(DeepSleep_WakeupReason_t *wakeupReason);
+typedef struct _IARM_Bus_DeepSleepMgr_WakeupKeyCode_Param_t {
+	unsigned int keyCode;
+} IARM_Bus_DeepSleepMgr_WakeupKeyCode_Param_t;
 
+int  PLAT_DS_GetLastWakeupReason(DeepSleep_WakeupReason_t *wakeupReason);
+int PLAT_DS_GetLastWakeupKeyCode(IARM_Bus_DeepSleepMgr_WakeupKeyCode_Param_t *wakeupKeyCode);
 /** @} */ //End of Doxygen tag
 #endif
 

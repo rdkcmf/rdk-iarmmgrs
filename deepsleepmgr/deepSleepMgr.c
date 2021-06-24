@@ -65,6 +65,7 @@ static IARM_Result_t _DeepSleepWakeup(void *arg);
 static IARM_Result_t _SetDeepSleepTimer(void *arg);
 static IARM_Result_t _GetDeepSleepStatus(void *arg);
 static IARM_Result_t _GetLastWakeupReason(void *arg);
+static IARM_Result_t _GetLastWakeupKeyCode(void *arg);
 
 static gboolean heartbeatMsg(gpointer data);
 static gboolean deep_sleep_delay_timer_fn(gpointer data);
@@ -110,6 +111,7 @@ IARM_Result_t DeepSleepMgr_Start(int argc, char *argv[])
     IARM_Bus_RegisterCall("GetDeepSleepStatus", _GetDeepSleepStatus);
 
     IARM_Bus_RegisterCall(IARM_BUS_DEEPSLEEPMGR_API_GetLastWakeupReason, _GetLastWakeupReason);
+    IARM_Bus_RegisterCall(IARM_BUS_DEEPSLEEPMGR_API_GetLastWakeupKeyCode, _GetLastWakeupKeyCode);
     /* Main loop for Deep  Sleep Manager */
     deepSleepMgr_Loop = g_main_loop_new ( NULL , FALSE );
     if(deepSleepMgr_Loop != NULL){
@@ -465,5 +467,12 @@ static IARM_Result_t _GetLastWakeupReason(void *arg)
 	return IARM_RESULT_SUCCESS;
 }
 
+static IARM_Result_t _GetLastWakeupKeyCode(void *arg)
+{
+	IARM_Bus_DeepSleepMgr_WakeupKeyCode_Param_t *wakeupKeyCode = (IARM_Bus_DeepSleepMgr_WakeupKeyCode_Param_t *)arg;
+	int status = PLAT_DS_GetLastWakeupKeyCode(wakeupKeyCode);
+	return (IARM_Result_t)status;
+
+}
 /** @} */
 /** @} */
