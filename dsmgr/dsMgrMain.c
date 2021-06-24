@@ -49,25 +49,25 @@ int b_rdk_logger_enabled = 0;
 
 void logCallback(const char *buff)
 {
-    DEBUG_LOG("%s",buff);
+    INT_DEBUG("%s",buff);
 }
 void dslogCallback(int priority,const char *buff)
 {
     if(priority == 0)
     {
-        INFO_LOG("%s",buff);
+        INT_INFO("%s",buff);
     }
     else if(priority == 1)
     {
-        WARN_LOG("%s",buff);
+        INT_WARN("%s",buff);
     }
     else if(priority == 2)
     {
-        ERROR_LOG("%s",buff);
+        INT_ERROR("%s",buff);
     }
     else if(priority == 3)
     {
-        DEBUG_LOG("%s",buff);
+        INT_DEBUG("%s",buff);
     }
 } 
   

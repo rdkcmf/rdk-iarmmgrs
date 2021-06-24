@@ -624,6 +624,7 @@ static void _IrInputKeyEventHandler(PLAT_irKey_metadata_t *irKey, int keySrc, un
         case KED_XR16V1_NOTIFY:
         case KED_SCREEN_BIND_NOTIFY:
             LOG("This (0x%x) is not a key press. Control event only.\n", keyCode);
+	    break;   //CID:88957 - Missing break
         case KED_VOLUMEUP:
         case KED_VOLUMEDOWN:
         case KED_MUTE:

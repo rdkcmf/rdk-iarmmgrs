@@ -552,7 +552,7 @@ static IARM_Result_t _SetTemperatureThresholds(void *arg)
     if(NULL != arg)
     {
         IARM_Bus_PWRMgr_SetTempThresholds_Param_t * param = (IARM_Bus_PWRMgr_SetTempThresholds_Param_t *) arg;
-        LOG("[PwrMgr] Setting thermal threshold : %d , %d \n", param->tempHigh,param->tempCritical);
+        LOG("[PwrMgr] Setting thermal threshold : %f , %f \n", param->tempHigh,param->tempCritical);  //CID:127982 ,127475,103705 - Print_args
         result = PLAT_API_SetTempThresholds(param->tempHigh,param->tempCritical);
         retCode = result?IARM_RESULT_SUCCESS:IARM_RESULT_IPCCORE_FAIL;
     }

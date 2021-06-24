@@ -90,17 +90,12 @@ printf(FORMAT, __VA_ARGS__);\
 
 #else
 
-#define INT_DEBUG(FORMAT, ...)        printf(FORMAT, __VA_ARGS__)
-#define INT_ERROR(FORMAT, ...)        printf(FORMAT, __VA_ARGS__)
-#define INT_INFO(FORMAT, ...)         printf(FORMAT, __VA_ARGS__)
-#define INT_WARNING(FORMAT, ...)      printf(FORMAT, __VA_ARGS__)
+#define INT_DEBUG(FORMAT, ...)        printf(FORMAT, ##__VA_ARGS__)
+#define INT_ERROR(FORMAT, ...)        printf(FORMAT, ##__VA_ARGS__)
+#define INT_INFO(FORMAT, ...)         printf(FORMAT, ##__VA_ARGS__)
+#define INT_WARNING(FORMAT, ...)      printf(FORMAT, ##__VA_ARGS__)
 
 #endif
-
-#define DEBUG_LOG(...)              INT_DEBUG(__VA_ARGS__, "")
-#define INFO_LOG(...)               INT_INFO(__VA_ARGS__, "")
-#define ERROR_LOG(...)              INT_ERROR(__VA_ARGS__, "")
-#define WARN_LOG(...)               INT_WARNING(__VA_ARGS__, "")
 
 IARM_Result_t DSMgr_Start();
 IARM_Result_t DSMgr_Loop();

@@ -119,7 +119,6 @@ printf(FORMAT, __VA_ARGS__);\
 
 #endif /* RDK_LOGGER_ENABLED */
 
-#define LOG(...)              INT_LOG("DIUMGR: " __VA_ARGS__)
 #define STATUS_LOG(...)       LOG("IARMSTATUS: " __VA_ARGS__)
 
 

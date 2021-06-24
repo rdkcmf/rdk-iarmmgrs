@@ -123,7 +123,7 @@ int b_rdk_logger_enabled = 0;
 
 void logCallback(const char *buff)
 {
-	LOG("%s",buff);
+	INT_LOG("%s",buff);
 }
 #endif
 int main(int argc, char *argv[])
@@ -158,8 +158,8 @@ int main(int argc, char *argv[])
 
     time_t tim=time(NULL);
      tm *now=localtime(&tim);
-     LOG("Date is %d/%02d/%02d\n", now->tm_year+1900, now->tm_mon+1, now->tm_mday);
-     LOG("Time is %02d:%02d\n", now->tm_hour, now->tm_min);
+     INT_LOG("Date is %d/%02d/%02d\n", now->tm_year+1900, now->tm_mon+1, now->tm_mday);
+     INT_LOG("Time is %02d:%02d\n", now->tm_hour, now->tm_min);
 
 
 	if (deviceUpdateStart() == IARM_RESULT_SUCCESS)
@@ -170,7 +170,7 @@ int main(int argc, char *argv[])
 		list<JSONParser::varVal *> *folders = folderRef->array;
 		deviceUpdateRun(folders);
 		}else{
-			LOG("NO FOLDERS IN CONFIG FILE!!!!!!!!!!");
+			INT_LOG("NO FOLDERS IN CONFIG FILE!!!!!!!!!!");
 		}
 	}
 	deviceUpdateStop();
@@ -182,7 +182,7 @@ IARM_Result_t deviceUpdateStart()
 
 	IARM_Result_t status = IARM_RESULT_INVALID_STATE;
 
-	LOG("Entering [%s] - [%s] - disabling io redirect buf\n", __FUNCTION__, IARM_BUS_DEVICE_UPDATE_NAME);
+	INT_LOG("Entering [%s] - [%s] - disabling io redirect buf\n", __FUNCTION__, IARM_BUS_DEVICE_UPDATE_NAME);
 	setvbuf(stdout, NULL, _IOLBF, 0);
 	pthread_mutex_init(&mapMutex, NULL);
 
@@ -193,16 +193,16 @@ IARM_Result_t deviceUpdateStart()
 		pthread_mutex_init(&tMutexLock, NULL);
 		pthread_mutex_lock(&tMutexLock);
 		rc = IARM_Bus_Init(IARM_BUS_DEVICE_UPDATE_NAME);
-		LOG("dumMgr:I-ARM IARM_Bus_Init Mgr: %d\n", rc);
+		INT_LOG("dumMgr:I-ARM IARM_Bus_Init Mgr: %d\n", rc);
 
 		rc = IARM_Bus_Connect();
-		LOG("dumMgr:I-ARM IARM_Bus_Connect Mgr: %d\n", rc);
+		INT_LOG("dumMgr:I-ARM IARM_Bus_Connect Mgr: %d\n", rc);
 
 		rc = IARM_Bus_RegisterEvent(IARM_BUS_DEVICE_UPDATE_EVENT_MAX);
-		LOG("dumMgr:I-ARM IARM_Bus_RegisterEvent Mgr: %d\n", rc);
+		INT_LOG("dumMgr:I-ARM IARM_Bus_RegisterEvent Mgr: %d\n", rc);
 
 		rc = IARM_Bus_RegisterCall( IARM_BUS_DEVICE_UPDATE_API_AcceptUpdate, AcceptUpdate); /* RPC Method Implementation*/
-		LOG("dumMgr:I-ARM IARM_BUS_DEVICE_UPDATE_API_AcceptUpdate Mgr: %d\n", rc);
+		INT_LOG("dumMgr:I-ARM IARM_BUS_DEVICE_UPDATE_API_AcceptUpdate Mgr: %d\n", rc);
 
 		IARM_Bus_RegisterEventHandler(IARM_BUS_DEVICE_UPDATE_NAME, IARM_BUS_DEVICE_UPDATE_EVENT_READY_TO_DOWNLOAD,
 				_deviceUpdateEventHandler);
@@ -221,7 +221,7 @@ IARM_Result_t deviceUpdateStart()
 	else
 	{
 		__TIMESTAMP();
-		LOG("dumMgr: I-ARM Device Update Mgr Error case: %d\n", __LINE__);
+		INT_LOG("dumMgr: I-ARM Device Update Mgr Error case: %d\n", __LINE__);
 		status = IARM_RESULT_INVALID_STATE;
 	}
 	return status;
@@ -248,7 +248,7 @@ bool loadConfig()
 				if (!_fileExists(filePath))
 				{
 					__TIMESTAMP();
-					LOG(
+					INT_LOG(
 						"I-ARM DevUpdate Mgr: Configuration error. Configuration file(s) missing, no folders to watch!!\n");
 					return false;
 				}
@@ -257,18 +257,18 @@ bool loadConfig()
 	}
 
 	__TIMESTAMP();
-	LOG("loading config file %s\n", filePath.c_str());
+	INT_LOG("loading config file %s\n", filePath.c_str());
 	if ((fp = fopen(filePath.c_str(), "r")) != NULL)
 	{
 		string confData;
-		char buf[2048];
+		char buf[2048] = "";  //CID:136517 - string null
 
 		while (!feof(fp) && confData.length() < 65535)
 		{
 			memset(buf, 0, sizeof(buf));
-                        if (fread(buf, 1, sizeof(buf) - 1, fp) <= 0 )
+                        if (0 >= fread(buf, 1, sizeof(buf) - 1, fp))   //cID:86017 - checked return
                         {
-			    LOG("dumMgr fread failed  \n");
+			    INT_LOG("dumMgr fread failed  \n");
                         }
                         else
                         {
@@ -313,73 +313,73 @@ bool loadConfig()
 		serverUpdatePath=configuration["serverUpdatePath"]->str;
 	}
 	else{
-		LOG("error: no serverUpdatePath  in config\n");
+		INT_LOG("error: no serverUpdatePath  in config\n");
 	}
 	if(configuration["tempFilePath"]!=NULL)
 	{
 		tempFilePath=configuration["tempFilePath"]->str;
 	}
 	else{
-		LOG("error: no  tempFilePath in config\n");
+		INT_LOG("error: no  tempFilePath in config\n");
 	}
 	if(configuration["forceUpdate"]!=NULL)
 	{
 		forceUpdate=configuration["forceUpdate"]->boolean;
 	}
 	else{
-		LOG("error: no forceUpdate  in config\n");
+		INT_LOG("error: no forceUpdate  in config\n");
 	}
 	if(configuration["interactiveDownload"]!=NULL)
 	{
 		interactiveDownload=configuration["interactiveDownload"]->boolean;
 	}
 	else{
-		LOG("error: no interactiveDownload  in config\n");
+		INT_LOG("error: no interactiveDownload  in config\n");
 	}
 	if(configuration["interactiveLoad"]!=NULL)
 	{
 		interactiveLoad=configuration["interactiveLoad"]->boolean;
 	}
 	else{
-		LOG("error: no  interactiveLoad in config\n");
+		INT_LOG("error: no  interactiveLoad in config\n");
 	}
 	if(configuration["loadDelayType"]!=NULL)
 	{
 		loadDelayType=atoi(configuration["loadDelayType"]->str.c_str());
 	}
 	else{
-		LOG("error: no loadDelayType  in config\n");
+		INT_LOG("error: no loadDelayType  in config\n");
 	}
 	if(configuration["loadTimeAfterInactive"]!=NULL)
 	{
 		loadTimeAfterInactive=atoi(configuration["loadTimeAfterInactive"]->str.c_str());
 	}
 	else{
-		LOG("error: no  loadTimeAfterInactive in config\n");
+		INT_LOG("error: no  loadTimeAfterInactive in config\n");
 	}
 	if(configuration["timeToLoad"]!=NULL)
 	{
 		timeToLoad=atoi(configuration["timeToLoad"]->str.c_str());
 	}
 	else{
-		LOG("error: no  timeToLoad in config\n");
+		INT_LOG("error: no  timeToLoad in config\n");
 	}
 	if(configuration["backgroundDownload"]!=NULL)
 	{
 		backgroundDownload=configuration["backgroundDownload"]->boolean;
-		LOG ("setting  backgroundDownload=%s\n",backgroundDownload?"true":"false");
+		INT_LOG ("setting  backgroundDownload=%s\n",backgroundDownload?"true":"false");
 	}
 	else{
-		LOG("error: no backgroundDownload  in config\n");
+		INT_LOG("error: no backgroundDownload  in config\n");
 	}
 
 	if(configuration["loadImageImmediately"]!=NULL)
 	{
 		loadImageImmediately=configuration["loadImageImmediately"]->boolean;
-		LOG ("setting  loadImageImmediately=%s\n",loadImageImmediately?"true":"false");
+		INT_LOG ("setting  loadImageImmediately=%s\n",loadImageImmediately?"true":"false");
 	}
 	else{
-		LOG("error: no loadImageImmediately  in config\n");
+		INT_LOG("error: no loadImageImmediately  in config\n");
 	}
 
 	if(configuration["loadBeforeHour"]!=NULL)
@@ -387,7 +387,7 @@ bool loadConfig()
 		loadBeforeHour=atoi(configuration["loadBeforeHour"]->str.c_str());;
 	}
 	else{
-		LOG("error: no loadBeforeHour  in config\n");
+		INT_LOG("error: no loadBeforeHour  in config\n");
 	}
 
 	if(configuration["requestedPercentIncrement"]!=NULL)
@@ -395,7 +395,7 @@ bool loadConfig()
 		requestedPercentIncrement=atoi(configuration["requestedPercentIncrement"]->str.c_str());
 	}
 	else{
-		LOG("error: no  requestedPercentIncrement in config\n");
+		INT_LOG("error: no  requestedPercentIncrement in config\n");
 	}
 	if(configuration["recheckForUpdatesMin"]!=NULL)
 	{
@@ -404,35 +404,35 @@ bool loadConfig()
    if(configuration["delayTillAnnounceTimeMin"]!=NULL)
     {
     	delayTillAnnounceTimeMin=atoi(configuration["delayTillAnnounceTimeMin"]->str.c_str());
-        LOG ("setting delayTillAnnounceTimeMin=%d\n",delayTillAnnounceTimeMin);
+        INT_LOG ("setting delayTillAnnounceTimeMin=%d\n",delayTillAnnounceTimeMin);
     }
     else{
-        LOG("warning: no delayTillAnnounceTimeMin in config!\n");
+        INT_LOG("warning: no delayTillAnnounceTimeMin in config!\n");
     }
     if(configuration["oneAnnouncePerRun"]!=NULL)
     {
     	oneAnnouncePerRun=configuration["oneAnnouncePerRun"]->boolean;
-        LOG ("setting oneAnnouncePerRun=%s\n",oneAnnouncePerRun?"true":"false");
+        INT_LOG ("setting oneAnnouncePerRun=%s\n",oneAnnouncePerRun?"true":"false");
     }
     else{
-        LOG("warning: no oneAnnouncePerRun in config!\n");
+        INT_LOG("warning: no oneAnnouncePerRun in config!\n");
     }
 
 	__TIMESTAMP();
-	LOG("running with config:\n");
-	LOG ("   serverUpdatePath= %s\n",serverUpdatePath.c_str());
-	LOG ("   tempFilePath=%s\n",tempFilePath.c_str());
-	LOG ("   interactiveDownload=%s\n",interactiveDownload?"true":"false");
-	LOG ("   interactiveLoad=%s\n",interactiveLoad?"true":"false");
-	LOG ("   loadDelayType=%d\n",loadDelayType);
-	LOG ("   loadTimeAfterInactive=%d\n",loadTimeAfterInactive);
-	LOG ("   timeToLoad=%d\n",timeToLoad);
-	LOG ("   backgroundDownload=%s\n",backgroundDownload?"true":"false");
-	LOG ("   loadImageImmediately=%s\n",loadImageImmediately?"true":"false");
-	LOG ("   loadBeforeHour=%d\n",loadBeforeHour);
-	LOG ("   requestedPercentIncrement=%d\n",requestedPercentIncrement);
-	LOG ("   recheckForUpdatesMin=%d\n",recheckForUpdatesMin);
-   LOG ("   delayTillAnnounceTimeMin=%d\n",delayTillAnnounceTimeMin);
+	INT_LOG("running with config:\n");
+	INT_LOG ("   serverUpdatePath= %s\n",serverUpdatePath.c_str());
+	INT_LOG ("   tempFilePath=%s\n",tempFilePath.c_str());
+	INT_LOG ("   interactiveDownload=%s\n",interactiveDownload?"true":"false");
+	INT_LOG ("   interactiveLoad=%s\n",interactiveLoad?"true":"false");
+	INT_LOG ("   loadDelayType=%d\n",loadDelayType);
+	INT_LOG ("   loadTimeAfterInactive=%d\n",loadTimeAfterInactive);
+	INT_LOG ("   timeToLoad=%d\n",timeToLoad);
+	INT_LOG ("   backgroundDownload=%s\n",backgroundDownload?"true":"false");
+	INT_LOG ("   loadImageImmediately=%s\n",loadImageImmediately?"true":"false");
+	INT_LOG ("   loadBeforeHour=%d\n",loadBeforeHour);
+	INT_LOG ("   requestedPercentIncrement=%d\n",requestedPercentIncrement);
+	INT_LOG ("   recheckForUpdatesMin=%d\n",recheckForUpdatesMin);
+   INT_LOG ("   delayTillAnnounceTimeMin=%d\n",delayTillAnnounceTimeMin);
 	return true;
 }
 
@@ -495,23 +495,23 @@ void processDeviceFolder(string updatePath, string deviceName)
 {
 	DIR *dp;
 	struct dirent *dirp;
-	LOG("dumMgr:processing device folder:%s\n", updatePath.c_str());
+	INT_LOG("dumMgr:processing device folder:%s\n", updatePath.c_str());
 	if ((dp = opendir(updatePath.c_str())) == NULL)
 	{
-		LOG("dumMgr:Error(%d) opening updatePath \n", errno);
+		INT_LOG("dumMgr:Error(%d) opening updatePath \n", errno);
 		return;
 	}
 
 // loop through dir listing and get normal files
-	LOG("dumMgr:checking folder files\n");
+	INT_LOG("dumMgr:checking folder files\n");
 	while ((dirp = readdir(dp)) != NULL)
 	{
-		LOG("dumMgr:checking folder files:%s  - type=%d\n",dirp->d_name,dirp->d_type);
+		INT_LOG("dumMgr:checking folder files:%s  - type=%d\n",dirp->d_name,dirp->d_type);
 		if (dirp->d_type != DT_DIR)
 		{
 			// check for it being either a tgz or tar.gz file
 			string filename = dirp->d_name;
-			LOG("dumMgr:checking file:%s\n", filename.c_str());
+			INT_LOG("dumMgr:checking file:%s\n", filename.c_str());
 			unsigned int idx = filename.rfind('.');
 			if (idx != string::npos)
 			{
@@ -544,7 +544,7 @@ void processDeviceFolder(string updatePath, string deviceName)
 
 void processDeviceFile(string filePath, string deviceName)
 {
-	LOG("dumMgr:processing Device File:%s\n", filePath.c_str());
+	INT_LOG("dumMgr:processing Device File:%s\n", filePath.c_str());
 	string cmd = "rm -rf ";
 	cmd += tempFilePath;
 #ifdef YOCTO_BUILD
@@ -569,7 +569,7 @@ void processDeviceFile(string filePath, string deviceName)
 	vector<string>::iterator itr;
 	if(myfiles != NULL)
 	{
-		LOG("dumMgr: searching Device File:%s\n", filePath.c_str());
+		INT_LOG("dumMgr: searching Device File:%s\n", filePath.c_str());
 		for (itr = myfiles->begin(); itr != myfiles->end(); itr++)
 		{
 			string filename = *itr;
@@ -589,7 +589,7 @@ void processDeviceFile(string filePath, string deviceName)
 				if (getEventData(tempFilePath + filename, &myData))
 				{
 					__TIMESTAMP();
-					LOG("dumMgr:sending announce event");
+					INT_LOG("dumMgr:sending announce event");
 					IARM_Result_t retval = IARM_Bus_BroadcastEvent(
 					IARM_BUS_DEVICE_UPDATE_NAME, (IARM_EventId_t) IARM_BUS_DEVICE_UPDATE_EVENT_ANNOUNCE, (void *) &myData,
 							sizeof(_IARM_Bus_DeviceUpdate_Announce_t));
@@ -601,7 +601,7 @@ void processDeviceFile(string filePath, string deviceName)
 					else
 					{
 						__TIMESTAMP();
-						LOG("dumMgr:Announce Event problem, %i\n", retval);
+						INT_LOG("dumMgr:Announce Event problem, %i\n", retval);
 					}
 				}
 			}
@@ -610,7 +610,7 @@ void processDeviceFile(string filePath, string deviceName)
 	}
 	else
 	{
-		LOG("dumMgr: Failed in searching Device File:[%s]. getdir returned NULL\n", filePath.c_str());;
+		INT_LOG("dumMgr: Failed in searching Device File:[%s]. getdir returned NULL\n", filePath.c_str());;
 	}
 
 }
@@ -622,7 +622,7 @@ string getXMLTagText(string xml, string tag)
 	int idx = xml.find("<" + tag);
 	if (idx == string::npos)
 	{
-		LOG("dumMgr:tag <%s> not found in xml file: aborting\n", tag.c_str());
+		INT_LOG("dumMgr:tag <%s> not found in xml file: aborting\n", tag.c_str());
 		return "";
 	}
 // skip past the tag and its two brackets:
@@ -642,7 +642,7 @@ bool getEventData(string filename, _IARM_Bus_DeviceUpdate_Announce_t *myData)
 	string fileContents;
 	std::ifstream myfile;
 
-	LOG("dumMgr:--------------------Checking tar File %s\n", filename.c_str());
+	INT_LOG("dumMgr:--------------------Checking tar File %s\n", filename.c_str());
 	myfile.open(filename.c_str(), std::ifstream::in);
 	if (myfile.is_open())
 	{
@@ -663,7 +663,7 @@ bool getEventData(string filename, _IARM_Bus_DeviceUpdate_Announce_t *myData)
 	string text = getXMLTagText(fileContents, "image:softwareVersion");
 	if (text.length() == 0)
 	{
-		LOG("dumMgr:--------------------Missing Version %s\n", filename.c_str());
+		INT_LOG("dumMgr:--------------------Missing Version %s\n", filename.c_str());
 		return false;
 	}
 		rc = strcpy_s(myData->deviceImageVersion,sizeof(myData->deviceImageVersion), text.c_str());
@@ -686,7 +686,7 @@ bool getEventData(string filename, _IARM_Bus_DeviceUpdate_Announce_t *myData)
 //	LOG("product name:%s\n", text.c_str());
 
 	myData->forceUpdate = forceUpdate;
-	LOG("dumMgr:--------------------Done with tar File %s\n", filename.c_str());
+	INT_LOG("dumMgr:--------------------Done with tar File %s\n", filename.c_str());
 	return true;
 }
 
@@ -701,7 +701,7 @@ void deviceUpdateRun(list<JSONParser::varVal *> *folders)
 			if (folders != NULL)
 			{
 					int numFolders=folders->size();
-				LOG("We have %d folders to watch\n",numFolders);
+				INT_LOG("We have %d folders to watch\n",numFolders);
 				if(oneAnnouncePerRun){
 					// since TI boxes can only announce one update we space updates on days of month to make
 					// sure all types get updated.  This is a temporary hack until control manager takes over from
@@ -710,27 +710,27 @@ void deviceUpdateRun(list<JSONParser::varVal *> *folders)
 					struct tm *aTime = localtime(&theTime);
 					int day = aTime->tm_mday;
 					int selectedUpdate=day%(numFolders);
-					LOG("today is :%d, so only checking folder %d (mod %d)\n",day,selectedUpdate,numFolders);
+					INT_LOG("today is :%d, so only checking folder %d (mod %d)\n",day,selectedUpdate,numFolders);
 
 					for (list<JSONParser::varVal *>::iterator arrayItr = folders->begin(); arrayItr != folders->end();arrayItr++)
 					{
 						string updateFolder = (*arrayItr)->str;
 						if(selectedUpdate<=0){
 							string updatePath = serverUpdatePath + updateFolder;
-							LOG("checking folder:%s\n",updatePath.c_str());
+							INT_LOG("checking folder:%s\n",updatePath.c_str());
 
 							if (updatePath.length() > 0)
 							{
 								if (_folderExists(updatePath))
 								{
-									LOG("I-ARM DevUpdate Mgr: processing folder location <%s>\n", updatePath.c_str());
+									INT_LOG("I-ARM DevUpdate Mgr: processing folder location <%s>\n", updatePath.c_str());
 									processDeviceFolder(updatePath, updateFolder);
 
 								}
 							}
 							break;
 						}else{
-							LOG("skipping folder\n",updateFolder.c_str());
+							INT_LOG("skipping folder:%s\n",updateFolder.c_str());  //CID:127614 - Print args
 						}
 						selectedUpdate--;
 					}
@@ -741,13 +741,13 @@ void deviceUpdateRun(list<JSONParser::varVal *> *folders)
 					{
 						string updateFolder = (*arrayItr)->str;
 						string updatePath = serverUpdatePath + updateFolder;
-						LOG("checking folder:%s\n",updatePath.c_str());
+						INT_LOG("checking folder:%s\n",updatePath.c_str());
 
 						if (updatePath.length() > 0)
 						{
 							if (_folderExists(updatePath))
 							{
-								LOG("I-ARM DevUpdate Mgr: processing folder location <%s>\n", updatePath.c_str());
+								INT_LOG("I-ARM DevUpdate Mgr: processing folder location <%s>\n", updatePath.c_str());
 								processDeviceFolder(updatePath, updateFolder);
 
 							}
@@ -755,12 +755,12 @@ void deviceUpdateRun(list<JSONParser::varVal *> *folders)
 					}
 				}
 				__TIMESTAMP();
-				LOG("Done with FOLDERS TO WATCH!!!  \n");
+				INT_LOG("Done with FOLDERS TO WATCH!!!  \n");
 
 			}
 			else
 			{
-				LOG("ERROR - NO FOLDERS TO WATCH!!!  \n");
+				INT_LOG("ERROR - NO FOLDERS TO WATCH!!!  \n");
 			}
 		}
 
@@ -771,16 +771,16 @@ void deviceUpdateRun(list<JSONParser::varVal *> *folders)
 		if (updatesInProgress->size() > 0)
 		{
 			__TIMESTAMP();
-			LOG("deviceUpdateMgr - updates in progress:\n");
+			INT_LOG("deviceUpdateMgr - updates in progress:\n");
 			map<int, updateInProgress_t *>::iterator pos = updatesInProgress->begin();
 			while (pos != updatesInProgress->end())
 			{
-				LOG("     UpdateID:%d deviceID:%d percentDownload:%d Loaded:%d file:%s\n", pos->first,
+				INT_LOG("     UpdateID:%d deviceID:%d percentDownload:%d Loaded:%d file:%s\n", pos->first,
 						pos->second->acceptParams->deviceID, pos->second->downloadPercent, pos->second->loadComplete,
 						pos->second->acceptParams->deviceImageFilePath);
 				if (pos->second->errorCode > 0)
 				{
-					LOG("              ERROR on UpdateID:%d Type:%d Message:%s\n", pos->first, pos->second->errorCode,
+					INT_LOG("              ERROR on UpdateID:%d Type:%d Message:%s\n", pos->first, pos->second->errorCode,
 							pos->second->errorMsg.c_str());
 				}
 				pos++;
@@ -798,11 +798,11 @@ IARM_Result_t AcceptUpdate(void *arg)
 {
 	errno_t rc = -1;
 	__TIMESTAMP();
-	LOG("dumMgr:Accept Update recieved\n");
+	INT_LOG("dumMgr:Accept Update recieved\n");
 	_IARM_Bus_DeviceUpdate_AcceptUpdate_Param_t *updateParams = new _IARM_Bus_DeviceUpdate_AcceptUpdate_Param_t();
 	IARM_Bus_DeviceUpdate_AcceptUpdate_Param_t *param = (IARM_Bus_DeviceUpdate_AcceptUpdate_Param_t *) arg;
 	param->updateSessionID = nextID++;
-	LOG("dumMgr:update Session ID=%d\n", param->updateSessionID);
+	INT_LOG("dumMgr:update Session ID=%d\n", param->updateSessionID);
 	param->interactiveDownload = interactiveDownload;
 	param->interactiveLoad = interactiveLoad;
 		rc = memcpy_s(updateParams,sizeof(_IARM_Bus_DeviceUpdate_AcceptUpdate_Param_t), param, sizeof(_IARM_Bus_DeviceUpdate_AcceptUpdate_Param_t));
@@ -817,7 +817,7 @@ IARM_Result_t AcceptUpdate(void *arg)
 	pthread_mutex_unlock(&mapMutex);
 
 	__TIMESTAMP();
-	LOG("dumMgr:Accept Update return success\n");
+	INT_LOG("dumMgr:Accept Update return success\n");
 	return IARM_RESULT_SUCCESS;
 }
 
@@ -870,31 +870,31 @@ void _deviceUpdateEventHandler(const char *owner, IARM_EventId_t eventId, void *
 		case IARM_BUS_DEVICE_UPDATE_EVENT_READY_TO_DOWNLOAD:
 		{
 			IARM_Bus_DeviceUpdate_ReadyToDownload_t *eventData = (IARM_Bus_DeviceUpdate_ReadyToDownload_t *) data;
-			LOG("I-ARM: got event IARM_BUS_DEVICE_UPDATE_EVENT_READY_TO_DOWNLOAD\n");
+			INT_LOG("I-ARM: got event IARM_BUS_DEVICE_UPDATE_EVENT_READY_TO_DOWNLOAD\n");
 
 			updateInProgress_t *uip = getUpdateInProgress(eventData->updateSessionID);
 
 			if (uip != NULL)
 			{
-				LOG("I-ARM: got valid updateSessionID  Details:\n");
-				LOG("I-ARM: 			currentSWVersion:%s\n", eventData->deviceCurrentSWVersion);
-				LOG("I-ARM: 			newSWVersion:%s\n", eventData->deviceNewSoftwareVersion);
-				LOG("I-ARM: 			deviceHWVersion:%s\n", eventData->deviceHWVersion);
-				LOG("I-ARM: 			deviceBootloaderVersion:%s\n", eventData->deviceBootloaderVersion);
-				LOG("I-ARM: 			deviceName:%s\n", eventData->deviceName);
-				LOG("I-ARM: 			totalSize:%i\n", eventData->totalSize);
-				LOG("I-ARM: 			deviceImageType:%i\n", eventData->deviceImageType);
+				INT_LOG("I-ARM: got valid updateSessionID  Details:\n");
+				INT_LOG("I-ARM: 			currentSWVersion:%s\n", eventData->deviceCurrentSWVersion);
+				INT_LOG("I-ARM: 			newSWVersion:%s\n", eventData->deviceNewSoftwareVersion);
+				INT_LOG("I-ARM: 			deviceHWVersion:%s\n", eventData->deviceHWVersion);
+				INT_LOG("I-ARM: 			deviceBootloaderVersion:%s\n", eventData->deviceBootloaderVersion);
+				INT_LOG("I-ARM: 			deviceName:%s\n", eventData->deviceName);
+				INT_LOG("I-ARM: 			totalSize:%i\n", eventData->totalSize);
+				INT_LOG("I-ARM: 			deviceImageType:%i\n", eventData->deviceImageType);
 
 				if(interactiveDownload==false){
 					sendDownLoadInit(eventData->updateSessionID);
 				}else
 				{
-					LOG("I-ARM: 	Interactive Download is true so not sending download Init message\n");
+					INT_LOG("I-ARM: 	Interactive Download is true so not sending download Init message\n");
 				}
 			}
 			else
 			{
-				LOG("I-ARM: did not get valid updateSessionID  Got id:%d\n", eventData->updateSessionID);
+				INT_LOG("I-ARM: did not get valid updateSessionID  Got id:%d\n", eventData->updateSessionID);
 			}
 
 		}
@@ -902,12 +902,12 @@ void _deviceUpdateEventHandler(const char *owner, IARM_EventId_t eventId, void *
 		case IARM_BUS_DEVICE_UPDATE_EVENT_DOWNLOAD_STATUS:
 		{
 			IARM_Bus_DeviceUpdate_DownloadStatus_t *eventData = (IARM_Bus_DeviceUpdate_DownloadStatus_t *) data;
-			LOG("I-ARM: got event IARM_BUS_DEVICE_UPDATE_EVENT_DOWNLOAD_STATUS\n");
+			INT_LOG("I-ARM: got event IARM_BUS_DEVICE_UPDATE_EVENT_DOWNLOAD_STATUS\n");
 			updateInProgress_t *uip = getUpdateInProgress(eventData->updateSessionID);
 
 			if (uip != NULL)
 			{
-				LOG("I-ARM: 			percentComplete:%i\n", eventData->percentComplete);
+				INT_LOG("I-ARM: 			percentComplete:%i\n", eventData->percentComplete);
 
 				uip->downloadPercent = eventData->percentComplete;
 				if(uip->downloadPercent>=100){
@@ -915,16 +915,16 @@ void _deviceUpdateEventHandler(const char *owner, IARM_EventId_t eventId, void *
 						sendLoadInit(eventData->updateSessionID);
 					}
 					else{
-						LOG("I-ARM: 	Interactive load is true so not sending load Init message\n");
+						INT_LOG("I-ARM: 	Interactive load is true so not sending load Init message\n");
 					}
 				}
 				else{
-					LOG("I-ARM: 			Not ready to load yet:%i\n", eventData->percentComplete);
+					INT_LOG("I-ARM: 			Not ready to load yet:%i\n", eventData->percentComplete);
 				}
 			}
 			else
 			{
-				LOG("I-ARM: IARM_BUS_DEVICE_UPDATE_EVENT_DOWNLOAD_STATUS invalid updateSessionID  Got id:%d\n",
+				INT_LOG("I-ARM: IARM_BUS_DEVICE_UPDATE_EVENT_DOWNLOAD_STATUS invalid updateSessionID  Got id:%d\n",
 						eventData->updateSessionID);
 			}
 		}
@@ -932,23 +932,23 @@ void _deviceUpdateEventHandler(const char *owner, IARM_EventId_t eventId, void *
 		case IARM_BUS_DEVICE_UPDATE_EVENT_LOAD_STATUS:
 		{
 			_IARM_Bus_DeviceUpdate_LoadStatus_t *eventData = (_IARM_Bus_DeviceUpdate_LoadStatus_t *) data;
-			LOG("I-ARM: got event IARM_BUS_DEVICE_UPDATE_EVENT_LOAD_STATUS\n");
+			INT_LOG("I-ARM: got event IARM_BUS_DEVICE_UPDATE_EVENT_LOAD_STATUS\n");
 			updateInProgress_t *uip = getUpdateInProgress(eventData->updateSessionID);
 
 			if (uip != NULL)
 			{
-				LOG("I-ARM: 			Complete:%s\n", eventData->loadStatus == 1 ? "true" : "false");
+				INT_LOG("I-ARM: 			Complete:%s\n", eventData->loadStatus == 1 ? "true" : "false");
 				uip->loadComplete = eventData->loadStatus == 1 ? true : false;
 				if (uip->loadComplete == 1)
 				{
-					LOG("I-ARM:load Complete!!!\n");
+					INT_LOG("I-ARM:load Complete!!!\n");
 					// TODO should remove update from list???
 				}
 
 			}
 			else
 			{
-				LOG("I-ARM: IARM_BUS_DEVICE_UPDATE_EVENT_DOWNLOAD_STATUS invalid updateSessionID  Got id:%d\n",
+				INT_LOG("I-ARM: IARM_BUS_DEVICE_UPDATE_EVENT_DOWNLOAD_STATUS invalid updateSessionID  Got id:%d\n",
 						eventData->updateSessionID);
 			}
 		}
@@ -956,7 +956,7 @@ void _deviceUpdateEventHandler(const char *owner, IARM_EventId_t eventId, void *
 		case IARM_BUS_DEVICE_UPDATE_EVENT_ERROR:
 		{
 			IARM_Bus_Device_Update_Error_t *eventData = (IARM_Bus_Device_Update_Error_t *) data;
-			LOG("I-ARM: got event IARM_BUS_DEVICE_UPDATE_EVENT_ERROR\n");
+			INT_LOG("I-ARM: got event IARM_BUS_DEVICE_UPDATE_EVENT_ERROR\n");
 
 			updateInProgress_t *uip = getUpdateInProgress(eventData->updateSessionID);
 
@@ -964,18 +964,18 @@ void _deviceUpdateEventHandler(const char *owner, IARM_EventId_t eventId, void *
 			{
 				uip->errorCode = eventData->errorType;
 				uip->errorMsg.assign((const char *) (eventData->errorMessage));
-				LOG("I-ARM: 			errorMessage:%s\n", eventData->errorMessage);
-				LOG("I-ARM: 			errorType:%i\n", eventData->errorType);
+				INT_LOG("I-ARM: 			errorMessage:%s\n", eventData->errorMessage);
+				INT_LOG("I-ARM: 			errorType:%i\n", eventData->errorType);
 			}
 			else
 			{
-				LOG("I-ARM: IARM_BUS_DEVICE_UPDATE_EVENT_DOWNLOAD_STATUS invalid updateSessionID  Got id:%d\n",
+				INT_LOG("I-ARM: IARM_BUS_DEVICE_UPDATE_EVENT_DOWNLOAD_STATUS invalid updateSessionID  Got id:%d\n",
 						eventData->updateSessionID);
 			}
 		}
 			break;
 		default:
-			LOG("I-ARM: unknown event type \n");
+			INT_LOG("I-ARM: unknown event type \n");
 			break;
 		}
 
@@ -984,7 +984,7 @@ void _deviceUpdateEventHandler(const char *owner, IARM_EventId_t eventId, void *
 	else
 	{
 		__TIMESTAMP();
-		LOG("I-ARM:_DevUpdateEventHandler event type not meant for me <%s>...\n", owner);
+		INT_LOG("I-ARM:_DevUpdateEventHandler event type not meant for me <%s>...\n", owner);
 	}
 }
 
@@ -1003,12 +1003,12 @@ void sendDownLoadInit(int id)
 	if (retval == IARM_RESULT_SUCCESS)
 	{
 		__TIMESTAMP();
-		LOG("I-ARM:IARM_BUS_DEVICE_UPDATE_EVENT_DOWNLOAD_INITIATE Event sent successfully");
+		INT_LOG("I-ARM:IARM_BUS_DEVICE_UPDATE_EVENT_DOWNLOAD_INITIATE Event sent successfully");
 	}
 	else
 	{
 		__TIMESTAMP();
-		LOG("I-ARM:IARM_BUS_DEVICE_UPDATE_EVENT_DOWNLOAD_INITIATE Event problem, %i", retval);
+		INT_LOG("I-ARM:IARM_BUS_DEVICE_UPDATE_EVENT_DOWNLOAD_INITIATE Event problem, %i", retval);
 	}
 }
 
@@ -1027,23 +1027,23 @@ void sendLoadInit(int id)
 	// however we do a sanity check so if we reboot later in the day we hold off till load time using time to load
     time_t tim=time(NULL);
      tm *now=localtime(&tim);
-     LOG("Time is %02d:%02d\n", now->tm_hour, now->tm_min);
+     INT_LOG("Time is %02d:%02d\n", now->tm_hour, now->tm_min);
 
 
 
-     LOG("diff time is %i hours\n",loadBeforeHour-now->tm_hour);
+     INT_LOG("diff time is %i hours\n",loadBeforeHour-now->tm_hour);
 	if(loadBeforeHour>now->tm_hour){
 		// we are before the load time so load immedialy
 		eventData.timeToLoad = 0;
 		__TIMESTAMP();
-		LOG("doing immediate load\n");
+		INT_LOG("doing immediate load\n");
 	}else
 	{
 		// we are after the time so load at that time tomorrow
 		// 24 hours worth of seconds pluss the negative number of diff time
 		eventData.timeToLoad=(24+(loadBeforeHour-now->tm_hour))*60*60;
 		__TIMESTAMP();
-		LOG("Waiting till tomorrow - delay of %i seconds\n",eventData.timeToLoad);
+		INT_LOG("Waiting till tomorrow - delay of %i seconds\n",eventData.timeToLoad);
 	}
 
 	// force now
@@ -1055,12 +1055,12 @@ void sendLoadInit(int id)
 	{
 
 		__TIMESTAMP();
-		LOG("I-ARM:IARM_BUS_DEVICE_UPDATE_EVENT_LOAD_INITIATE Event sent successfully");
+		INT_LOG("I-ARM:IARM_BUS_DEVICE_UPDATE_EVENT_LOAD_INITIATE Event sent successfully");
 	}
 	else
 	{
 		__TIMESTAMP();
-		LOG("I-ARM:IARM_BUS_DEVICE_UPDATE_EVENT_LOAD_INITIATE Event problem, %i", retval);
+		INT_LOG("I-ARM:IARM_BUS_DEVICE_UPDATE_EVENT_LOAD_INITIATE Event problem, %i", retval);
 	}
 }
 

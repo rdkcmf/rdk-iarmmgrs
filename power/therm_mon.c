@@ -74,6 +74,7 @@ int PLAT_API_DetemineClockSpeeds(uint32_t *cpu_rate_Normal, uint32_t *cpu_rate_S
 
 	if (numFreqs<=0) {
 		LOG("[%s] **ERROR** Unable to read sacaling frequencies!\n", __FUNCTION__);
+		fclose(fp);  //CID:158617 - Resource leak
 		return -1;
 	}
 
@@ -151,8 +152,10 @@ int PLAT_API_GetClockSpeed(uint32_t *speed)
 	    }
 	#endif
 
-	fscanf(fp, "%u", speed);
-	fclose(fp);
+	if(0 >= fscanf(fp, "%u", speed)) {
+		LOG("[%s:%d] Unable to get the speed \n", __FUNCTION__ , __LINE__);
+	}
+  	fclose(fp);  //CID:103784 - checked return
 
 	return 1;
 }

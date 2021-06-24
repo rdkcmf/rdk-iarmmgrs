@@ -132,7 +132,7 @@ IARM_Result_t DSMgr_Start()
 
 
 	setvbuf(stdout, NULL, _IOLBF, 0);
-    INFO_LOG("Entering [%s] - [%s] - disabling io redirect buf \r\n", __FUNCTION__, IARM_BUS_DSMGR_NAME);
+    INT_INFO("Entering [%s] - [%s] - disabling io redirect buf \r\n", __FUNCTION__, IARM_BUS_DSMGR_NAME);
 	
 	/* Register with IARM Libs and Connect */
 	IARM_Bus_Init(IARM_BUS_DSMGR_NAME);
@@ -166,7 +166,7 @@ IARM_Result_t DSMgr_Start()
 	{
 		if(0 > fscanf(fDSCtrptr,"%d",&iResnCount))
 		{
-			INFO_LOG("Error: fscanf on ddcDelay failed");
+			INT_INFO("Error: fscanf on ddcDelay failed");
 		}
                 fclose (fDSCtrptr);
 	}
@@ -188,7 +188,7 @@ IARM_Result_t DSMgr_Start()
         g_timeout_add_seconds (300 , heartbeatMsg , dsMgr_Gloop); 
     }
     else {
-        INFO_LOG("Fails to Create a main Loop for [%s] \r\n",IARM_BUS_DSMGR_NAME);
+        INT_INFO("Fails to Create a main Loop for [%s] \r\n",IARM_BUS_DSMGR_NAME);
     }
 
     if(!isHDMIConnected())
@@ -215,7 +215,7 @@ static gboolean heartbeatMsg(gpointer data)
 {
     time_t curr = 0;
     time(&curr);
-    INFO_LOG("I-ARM BUS DS Mgr: HeartBeat at %s\r\n", ctime(&curr));
+    INT_INFO("I-ARM BUS DS Mgr: HeartBeat at %s\r\n", ctime(&curr));
     return TRUE;
 }
 

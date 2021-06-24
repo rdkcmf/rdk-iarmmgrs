@@ -195,7 +195,7 @@ std::map<string, JSONParser::varVal *> JSONParser::parse(const unsigned char *js
     status = yajl_parse(hand, json, jsonLen);
 
     if (status != yajl_status_ok) {
-        __TIMESTAMP();LOG("JSONParser: Parse failed\n");
+        __TIMESTAMP();INT_LOG("JSONParser: Parse failed\n");
         goto done;
     }
 

@@ -112,7 +112,7 @@ static IARM_Result_t _GetSleepTimer(void *arg)
         param->start = (param->time ? 1 : 0);
     }
     UNLOCK();
-    LOG("SleepTimer %d has %.3f remaining\r\n", param->time);
+    LOG("SleepTimer %d has %.3lf remaining\r\n", param->start, param->time);  //CID:128053,127752,97127,95718 - Print_Args
     return IARM_RESULT_SUCCESS;
 }
 
