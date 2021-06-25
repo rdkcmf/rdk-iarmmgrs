@@ -35,7 +35,6 @@
   #include "IrInputRemoteKeyCodes.h"
 #endif /*End of _SKQ_KEY_MAP_1_*/
 
-
 #define UINPUT_SETUP_ID(uidev) \
 do {\
     memset(&uidev, 0, sizeof(uidev));\
@@ -45,6 +44,17 @@ do {\
     uidev.id.product = 0xfedc;\
     uidev.id.version = 1;\
 } while(0)
+
+#define UINPUT_SETUP_ID_SKY_KEYSIM(uidev) \
+do {\
+    memset(&uidev, 0, sizeof(uidev));\
+    snprintf(uidev.name, UINPUT_MAX_NAME_SIZE, "key-simulator");\
+    uidev.id.bustype = BUS_USB;\
+    uidev.id.vendor  = 0xbeef;\
+    uidev.id.product = 0xfedc;\
+    uidev.id.version = 1;\
+} while(0)
+
 
 #ifdef __cplusplus
 extern "C" { 
@@ -214,9 +224,15 @@ static void udispatcherScancode (int scanCode, int keyCode, int keyType, int sou
 
 int UINPUT_init()
 {
+    return UINPUT_init_src (IRMGR_UINPUT_SRC_IRMGR);
+}
+
+int UINPUT_init_src(IRMg_UINPUT_Src_t eSrc)
+{
 #ifndef UINPUT_VERSION
 #define UINPUT_VERSION (0)
 #endif
+
     int fd = -1;
     int ret = -1;
     fd = open("/dev/uinput", O_WRONLY|O_SYNC);
@@ -248,7 +264,16 @@ int UINPUT_init()
         if (ret == 0)
         {
             struct uinput_setup usetup;
-            UINPUT_SETUP_ID(usetup);
+            if (IRMGR_UINPUT_SRC_KEYSIM == eSrc) {
+#if defined _SKQ_KEY_MAP_1_
+                UINPUT_SETUP_ID_SKY_KEYSIM(usetup);
+#else
+                UINPUT_SETUP_ID(usetup);
+#endif /*End of _SKQ_KEY_MAP_1_*/
+            }
+            else {
+                UINPUT_SETUP_ID(usetup);
+            }
             ret = ioctl(fd, UI_DEV_SETUP, &usetup);
         }
 #else
@@ -256,7 +281,16 @@ int UINPUT_init()
         {
             /* Legacy uinput appraoch */
             struct uinput_user_dev uidev;
-            UINPUT_SETUP_ID(uidev);
+            if (IRMGR_UINPUT_SRC_KEYSIM == eSrc) {
+#if defined _SKQ_KEY_MAP_1_
+                UINPUT_SETUP_ID_SKY_KEYSIM(uidev);
+#else
+                UINPUT_SETUP_ID(uidev);
+#endif /*End of _SKQ_KEY_MAP_1_*/
+            }
+            else {
+                UINPUT_SETUP_ID(uidev);
+            }
             ret = write(fd, &uidev, sizeof(uidev));
             printf("write uinput_user_dev return %d vs %d\r\n", ret, sizeof(uidev));
             ret = ((ret == sizeof(uidev)) ? 0 :  -1);

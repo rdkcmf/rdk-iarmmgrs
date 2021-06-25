@@ -142,6 +142,14 @@ IARM_Result_t IRMgr_Register_uinput(uinput_dispatcher_t f);
 #ifdef __cplusplus
 extern "C" { 
 #endif
+
+typedef enum _IRMgr_UINPUTSrc {
+    IRMGR_UINPUT_SRC_IRMGR,
+    IRMGR_UINPUT_SRC_KEYSIM,
+    IRMGR_UINPUT_SRC_MAX
+} IRMg_UINPUT_Src_t;
+
+
 /**
  * @brief uinput module init.
  *
@@ -150,6 +158,8 @@ extern "C" {
  * @return Error code if fails.
  */
 int UINPUT_init(void);
+
+int UINPUT_init_src(IRMg_UINPUT_Src_t eSrc);
 
 /**
  * @brief get the dispather that will listen for IARM  IR 
