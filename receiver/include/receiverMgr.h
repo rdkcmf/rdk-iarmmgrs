@@ -11,6 +11,7 @@ extern "C"
 
 #define IARM_RECEIVER_GET_APP_INFO "XRE_RECEIVER_getAppInfo"
 #define IARM_RECEIVER_SET_CONNECTION_RESET "XRE_RECEIVER_setConnectionReset"
+#define IARM_RECEIVER_IS_MINI_DIAGNOSTICS_ENABLED "XRE_RECEIVER_isMiniDiagnosticsEnabled"
 
 #define APP_INFO_JSON_MAX 4096
 
@@ -29,6 +30,7 @@ typedef struct _IARM_Bus_Receiver_Param_t {
     union {
         AppInfoData appInfoData;
         ConnectionResetData connectionResetData;
+        bool isMiniDiagnosticsEnabled;
     } data;
     int status;
 } IARM_Bus_Receiver_Param_t;
