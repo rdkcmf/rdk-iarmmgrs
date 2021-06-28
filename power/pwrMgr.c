@@ -1328,29 +1328,27 @@ static IARM_Result_t _SetStandbyVideoState(void *arg)
         __TIMESTAMP();LOG("Error! Out of room to write new video port setting for standby mode.\n");
     }
 
-
-    
-    if((IARM_BUS_PWRMGR_POWERSTATE_ON != m_settings.powerState) && (IARM_BUS_PWRMGR_POWERSTATE_OFF != m_settings.powerState))
+    try
     {
-        /*We're currently in one of the standby states. This new setting needs to be applied right away.*/
-        __TIMESTAMP();LOG("[PwrMgr] Setting standby %s port status to %s.\n", param->port, ((1 == param->isEnabled)? "enabled" : "disabled"));
-        try 
+        device::VideoOutputPort &vPort = device::Host::getInstance().getVideoOutputPort(param->port);
+        if((IARM_BUS_PWRMGR_POWERSTATE_ON != m_settings.powerState) && (IARM_BUS_PWRMGR_POWERSTATE_OFF != m_settings.powerState))
         {
-            device::VideoOutputPort &vPort = device::Host::getInstance().getVideoOutputPort(param->port);
+            /*We're currently in one of the standby states. This new setting needs to be applied right away.*/
+            __TIMESTAMP();LOG("[PwrMgr] Setting standby %s port status to %s.\n", param->port, ((1 == param->isEnabled)? "enabled" : "disabled"));
             if(1 == param->isEnabled)
                 vPort.enable();
             else
                 vPort.disable();
         }
-        catch (...) 
+        else
         {
-            __TIMESTAMP();LOG("Exception Caught during [PWRMgr - _SetStandbyVideoState]. Possible bad video port.\n");
-            param->result = -1;
+            __TIMESTAMP();LOG("[PwrMgr] video port %s will be %s when going into standby mode.\n", param->port, ((1 == param->isEnabled)? "enabled" : "disabled"));
         }
     }
-    else
+    catch (...)
     {
-        __TIMESTAMP();LOG("[PwrMgr] video port %s will be %s when going into standby mode.\n", param->port, ((1 == param->isEnabled)? "enabled" : "disabled"));
+        __TIMESTAMP();LOG("Exception Caught during [PWRMgr - _SetStandbyVideoState]. Possible bad video port.\n");
+        param->result = -1;
     }
     return IARM_RESULT_SUCCESS;
 }
@@ -1361,6 +1359,18 @@ static IARM_Result_t _GetStandbyVideoState(void *arg)
     if(NULL == param->port)
     {
         __TIMESTAMP();LOG("Bad port name. Cannot get state.\n");
+        return IARM_RESULT_SUCCESS;
+    }
+
+    try
+    {
+        device::VideoOutputPort &vPort = device::Host::getInstance().getVideoOutputPort(param->port);
+
+    }
+    catch (...)
+    {
+        __TIMESTAMP();LOG("Exception Caught during [PWRMgr - _GetStandbyVideoState]. Possible bad video port.\n");
+        param->result = -1;
         return IARM_RESULT_SUCCESS;
     }
     param->isEnabled = ((true == get_video_port_standby_setting(param->port))? 1 : 0);
