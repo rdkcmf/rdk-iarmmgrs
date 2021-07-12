@@ -207,6 +207,8 @@ static pthread_t asyncPowerThreadId = NULL;
 
 static void _SetPowerStateAsync(IARM_Bus_PWRMgr_PowerState_t curState, IARM_Bus_PWRMgr_PowerState_t newState);
 #endif
+static pthread_mutex_t  wareHouseOpsMutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_t asyncPowerWarehouseOpsThreadId = NULL;
 
 
 static void _controlEventHandler(const char *owner, IARM_EventId_t eventId, void *data, size_t len);
@@ -1231,10 +1233,68 @@ static IARM_Result_t _HandleReboot(void *arg)
     return IARM_RESULT_SUCCESS;
 }
 
+static void* _AsyncPowerWareHouseOperation(void *pWareHouseOpnArg)
+{
+    IARM_Bus_PWRMgr_WareHouseOps_t* pWareHouseOpn = (IARM_Bus_PWRMgr_WareHouseOps_t*) pWareHouseOpnArg;
+
+    pthread_mutex_lock(&wareHouseOpsMutex);
+    if (NULL == pWareHouseOpn) {
+        LOG("_AsyncPowerWareHouseOperation pWareHouseOpnArg is NULL\r\n");
+        pthread_mutex_unlock(&wareHouseOpsMutex);
+        asyncPowerWarehouseOpsThreadId = NULL;
+	pthread_exit(NULL);
+    }
+
+    IARM_BUS_PWRMgr_WareHouseOpn_EventData_t wareHouseOpnEventData;
+    wareHouseOpnEventData.wareHouseOpn = (*pWareHouseOpn);
+    wareHouseOpnEventData.status = IARM_BUS_PWRMGR_WAREHOUSE_INPROGRESS;
+    LOG("_AsyncPowerWareHouseOperation pWareHouseOpnArg is %d pWareHouseOpn is %d\r\n", *((int*)pWareHouseOpnArg), *pWareHouseOpn);
+
+    if (IARM_BUS_PWRMGR_WAREHOUSE_RESET == (*pWareHouseOpn)) {
+        processWHResetNoReboot();
+	wareHouseOpnEventData.status = IARM_BUS_PWRMGR_WAREHOUSE_COMPLETED;
+    }
+    else if (IARM_BUS_PWRMGR_WAREHOUSE_CLEAR == (*pWareHouseOpn)) {
+        processWHClearNoReboot();
+	wareHouseOpnEventData.status = IARM_BUS_PWRMGR_WAREHOUSE_COMPLETED;
+    }
+    else {
+        /* goto sleep */
+        LOG("_AsyncPowerWareHouseOperation unexpected pWareHouseOpnArg %d\r\n", (*pWareHouseOpn));
+	wareHouseOpnEventData.status = IARM_BUS_PWRMGR_WAREHOUSE_FAILED;
+    }
+    free (pWareHouseOpn); pWareHouseOpn=NULL;
+
+    LOG("_AsyncPowerWareHouseOperation broadcasted IARM_BUS_PWRMGR_EVENT_WAREHOUSEOPS_STATUSCHANGED event\r\n");
+    IARM_Bus_BroadcastEvent(IARM_BUS_PWRMGR_NAME, IARM_BUS_PWRMGR_EVENT_WAREHOUSEOPS_STATUSCHANGED, (void *)&wareHouseOpnEventData, sizeof(wareHouseOpnEventData));
+
+    pthread_mutex_unlock(&wareHouseOpsMutex);
+    asyncPowerWarehouseOpsThreadId = NULL;
+}
+
+static int _SetPowerWareHouseOperation(IARM_Bus_PWRMgr_WareHouseOps_t eWareHouseOpn)
+{
+
+    IARM_Result_t retCode = IARM_RESULT_SUCCESS;
+
+    if (asyncPowerWarehouseOpsThreadId == NULL)
+    {
+        int *pWareHouseOpn = (int*) malloc (sizeof(int));
+        *pWareHouseOpn = eWareHouseOpn;
+        LOG("_SetPowerWareHouseOperation eWareHouseOpn is %d pWareHouseOpn is %d\r\n", eWareHouseOpn, *pWareHouseOpn);
+        pthread_create(&asyncPowerWarehouseOpsThreadId, NULL, _AsyncPowerWareHouseOperation, (void*)pWareHouseOpn);
+    }
+    else {
+	retCode = IARM_RESULT_INVALID_STATE;
+        LOG("_SetPowerWareHouseOperation already in progress %d. Pls call it once existing reset finished.\r\n", retCode);
+    }
+    return retCode;
+}
+
 static IARM_Result_t _WareHouseReset(void *arg)
 {
     IARM_Bus_PWRMgr_WareHouseReset_Param_t *param = (IARM_Bus_PWRMgr_WareHouseReset_Param_t *)arg;
-    int ret = param->suppressReboot ? processWHResetNoReboot() : processWHReset();
+    int ret = param->suppressReboot ? _SetPowerWareHouseOperation (IARM_BUS_PWRMGR_WAREHOUSE_RESET) : processWHReset();
     LOG("_WareHouseReset returned : %d\r\n", ret);
     fflush(stdout);
     if (ret == 0)
@@ -1246,7 +1306,7 @@ static IARM_Result_t _WareHouseReset(void *arg)
 static IARM_Result_t _WareHouseClear(void *arg)
 {
     IARM_Bus_PWRMgr_WareHouseReset_Param_t *param = (IARM_Bus_PWRMgr_WareHouseReset_Param_t *)arg;
-    int ret = param->suppressReboot ? processWHClearNoReboot() : processWHClear();
+    int ret = param->suppressReboot ? _SetPowerWareHouseOperation (IARM_BUS_PWRMGR_WAREHOUSE_CLEAR) : processWHClear();
     LOG("_WareHouseClear returned : %d\r\n", ret);
     fflush(stdout);
     if (ret == 0)

@@ -64,6 +64,7 @@ typedef enum _PWRMgr_EventId_t {
 #ifdef ENABLE_THERMAL_PROTECTION
     IARM_BUS_PWRMGR_EVENT_THERMAL_MODECHANGED,        /*!< Event to notify temperature level change */
 #endif // ENABLE_THERMAL_PROTECTION
+    IARM_BUS_PWRMGR_EVENT_WAREHOUSEOPS_STATUSCHANGED,        /*!< Event to notify ware house operation status changed */
     IARM_BUS_PWRMGR_EVENT_MAX,                     /*!< Max event id from this module */
 } IARM_Bus_PWRMgr_EventId_t;
 
@@ -76,6 +77,23 @@ typedef enum _IARM_Bus_PWRMgr_ThermalState_t{
     IARM_BUS_PWRMGR_TEMPERATURE_HIGH,          /* Temp is high, but just a warning as device can still operate */
     IARM_BUS_PWRMGR_TEMPERATURE_CRITICAL       /* Temp is critical, should trigger a thermal reset */
 } IARM_Bus_PWRMgr_ThermalState_t;
+
+/**
+ *  @brief Enumerator which represents the  possible warehouse ops
+ */
+typedef enum _IARM_Bus_PWRMgr_WareHouseOps_t{
+    IARM_BUS_PWRMGR_WAREHOUSE_RESET = 0,    /* warehouse reset */
+    IARM_BUS_PWRMGR_WAREHOUSE_CLEAR,          /* warehouse clear*/
+} IARM_Bus_PWRMgr_WareHouseOps_t;
+
+/**
+ *  @brief Enumerator which represents the  possible warehouse ops
+ */
+typedef enum _IARM_Bus_PWRMgr_WareHouseOpsStatus_t{
+    IARM_BUS_PWRMGR_WAREHOUSE_COMPLETED = 0,    /* warehouse operation completed sucessfully */
+    IARM_BUS_PWRMGR_WAREHOUSE_INPROGRESS,          /* warehouse operation in progress*/
+    IARM_BUS_PWRMGR_WAREHOUSE_FAILED,          /* warehouse operation failed.*/
+} IARM_Bus_PWRMgr_WareHouseOpsStatus_t;
 
 
 /**
@@ -113,6 +131,13 @@ typedef struct _IARM_BUS_PWRMgr_DeepSleepTimeout_EventData_t {
 	unsigned int timeout;        /*!< Timeout for deep sleep in seconds*/ 
 } IARM_BUS_PWRMgr_DeepSleepTimeout_EventData_t;
 
+/**
+ *  @brief Structure which holds warehouse opn status value.
+ */
+typedef struct _IARM_BUS_PWRMgr_WareHouseOpn_EventData_t {
+	IARM_Bus_PWRMgr_WareHouseOps_t wareHouseOpn;        /*!< WareHouse operation*/
+	IARM_Bus_PWRMgr_WareHouseOpsStatus_t status;        /*!< WareHouse operation status*/
+} IARM_BUS_PWRMgr_WareHouseOpn_EventData_t;
 
 /**
  * Declare RPC API names and their arguments
