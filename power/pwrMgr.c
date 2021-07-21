@@ -278,8 +278,8 @@ static IARM_Bus_PWRMgr_PowerState_t g_last_known_power_state = IARM_BUS_PWRMGR_P
 #ifdef OFFLINE_MAINT_REBOOT
 gint64 standby_time = 0;
 static bool rfcUpdated = false;
-static int standby_reboot_threshold = 86400;
-static int force_reboot_threshold = 172800;
+static int standby_reboot_threshold = 86400*3;
+static int force_reboot_threshold = 172800*3;
 
 #define MAX_RFC_LEN 15
 
@@ -574,14 +574,14 @@ static gboolean heartbeatMsg(gpointer data)
         standby_reboot_threshold = getStandbyRebootValue(STANDBY_REBOOT);
         if (standby_reboot_threshold == -1)
         {
-            standby_reboot_threshold = 86400;
+            standby_reboot_threshold = 86400*3;
         }
         LOG("StandbyReboot.StandbyAutoReboot = %d\n", standby_reboot_threshold);
 
         force_reboot_threshold = getStandbyRebootValue(FORCE_REBOOT);
         if (force_reboot_threshold == -1)
         {
-            force_reboot_threshold = 172800;
+            force_reboot_threshold = 172800*3;
         }
         LOG("StandbyReboot.ForceAutoReboot = %d\n", force_reboot_threshold);
         rfcUpdated = true;
