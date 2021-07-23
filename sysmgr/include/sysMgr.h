@@ -124,7 +124,6 @@ typedef struct _IARM_BUS_SYSMGR_KEYCodeLoggingInfo_Param_t{
       int logStatus;                                      /*!< HDCP Profile Data */
 }IARM_BUS_SYSMGR_KEYCodeLoggingInfo_Param_t;
 
-
 /*! Published Events from sys manager  */
 typedef enum _SYSMgr_EventId_t {
     IARM_BUS_SYSMGR_EVENT_SYSTEMSTATE,
@@ -138,6 +137,7 @@ typedef enum _SYSMgr_EventId_t {
 	IARM_BUS_SYSMGR_EVENT_EISS_APP_ID_UPDATE,	/*!< EISS App ID update */
 	IARM_BUS_SYSMGR_EVENT_KEYCODE_LOGGING_CHANGED,	/*!< Key Code logging status update */
 	IARM_BUS_SYSMGR_EVENT_USB_MOUNT_CHANGED,	/*!< Fires when USB mounts change */
+        IARM_BUS_SYSMGR_EVENT_APP_RELEASE_FOCUS,        /*!< Application fires event to release focus*/
 	IARM_BUS_SYSMGR_EVENT_MAX				/*!< Max Event Id */
 } IARM_Bus_SYSMgr_EventId_t;
 
