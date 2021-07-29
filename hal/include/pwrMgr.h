@@ -95,6 +95,22 @@ typedef enum _IARM_Bus_PWRMgr_WareHouseOpsStatus_t{
     IARM_BUS_PWRMGR_WAREHOUSE_FAILED,          /* warehouse operation failed.*/
 } IARM_Bus_PWRMgr_WareHouseOpsStatus_t;
 
+#ifdef ENABLE_SET_WAKEUP_SRC_CONFIG
+/**
+ *  @brief Enumerator which represents the  possible wakeup sources
+ */
+typedef enum _WakeupSrcType_t {
+    WAKEUPSRC_VOICE = 0,
+    WAKEUPSRC_PRESENCE_DETECTION,
+    WAKEUPSRC_BLUETOOTH,
+    WAKEUPSRC_WIFI,
+    WAKEUPSRC_IR,
+    WAKEUPSRC_POWER_KEY,
+    WAKEUPSRC_TIMER,
+    WAKEUPSRC_CEC,
+    WAKEUPSRC_LAN
+} WakeupSrcType_t;
+#endif
 
 /**
  *  @brief Structure which holds the event data.
@@ -291,6 +307,17 @@ typedef struct _IARM_Bus_PWRMgr_RebootParam_t{
      char requestor[PWRMGR_MAX_REBOOT_REASON_LENGTH];
 } IARM_Bus_PWRMgr_RebootParam_t;
 #define IARM_BUS_PWRMGR_API_Reboot "performReboot" /*!< Reboots device.*/
+
+#ifdef ENABLE_SET_WAKEUP_SRC_CONFIG
+/**
+ *  @brief Structure which holds the wakeup source type and the value to be set.
+ */
+typedef struct _IARM_Bus_PWRMgr_SetWakeupSrcConfig_Param_t{
+     WakeupSrcType_t srcType;
+     bool config;
+} IARM_Bus_PWRMgr_SetWakeupSrcConfig_Param_t;
+#define IARM_BUS_PWRMGR_API_SetWakeupSrcConfig "setWakeupSrcConfig" /*!< sets wakup configuration*/
+#endif
 
 
 #ifdef __cplusplus

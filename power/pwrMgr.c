@@ -224,6 +224,9 @@ static IARM_Result_t _FactoryReset(void *);
 static IARM_Result_t _UserFactoryReset(void *);
 static IARM_Result_t _GetPowerStateBeforeReboot(void *arg);
 static IARM_Result_t _HandleReboot(void *arg);
+#ifdef ENABLE_SET_WAKEUP_SRC_CONFIG
+static IARM_Result_t _SetWakeupSrcConfig(void *arg);
+#endif //ENABLE_SET_WAKEUP_SRC_CONFIG
 
 static int _InitSettings(const char *settingsFile);
 static int _WriteSettings(const char *settingsFile);
@@ -430,6 +433,10 @@ IARM_Result_t PWRMgr_Start(int argc, char *argv[])
     /*Register EAS handler so that we can ensure audio settings for EAS */
     IARM_Bus_RegisterCall(IARM_BUS_COMMON_API_SysModeChange,_SysModeChange);
     IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_GetPowerStateBeforeReboot, _GetPowerStateBeforeReboot);
+
+#ifdef ENABLE_SET_WAKEUP_SRC_CONFIG
+    IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_SetWakeupSrcConfig, _SetWakeupSrcConfig);
+#endif //ENABLE_SET_WAKEUP_SRC_CONFIG
 
 #ifdef ENABLE_THERMAL_PROTECTION
     initializeThermalProtection();
@@ -1244,6 +1251,27 @@ static IARM_Result_t _HandleReboot(void *arg)
     performReboot(param->requestor, param->reboot_reason_custom, param->reboot_reason_other);
     return IARM_RESULT_SUCCESS;
 }
+
+#ifdef ENABLE_SET_WAKEUP_SRC_CONFIG
+static IARM_Result_t _SetWakeupSrcConfig(void *arg)
+{
+    IARM_Result_t retCode = IARM_RESULT_IPCCORE_FAIL;
+    int result = 1;
+
+    if(NULL != arg)
+    {
+        IARM_Bus_PWRMgr_SetWakeupSrcConfig_Param_t *param = (IARM_Bus_PWRMgr_SetWakeupSrcConfig_Param_t *)arg;
+        LOG("[PwrMgr] Setting WakeupSrcConfiguration for src type %d to %d\n", param->srcType,param->config);
+        result = PLAT_API_SetWakeupSrc(param->srcType, param->config);
+	retCode = result?IARM_RESULT_IPCCORE_FAIL:IARM_RESULT_SUCCESS;
+    }
+    else
+    {
+        retCode = IARM_RESULT_INVALID_PARAM;
+    }
+    return retCode;
+}
+#endif //ENABLE_SET_WAKEUP_SRC_CONFIG
 
 static void* _AsyncPowerWareHouseOperation(void *pWareHouseOpnArg)
 {
