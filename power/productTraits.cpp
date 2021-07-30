@@ -223,7 +223,8 @@ namespace pwrMgrProductTraits
            until app takes over. */
         if ((IARM_BUS_PWRMGR_POWERSTATE_ON == last_known_state) && (IARM_BUS_PWRMGR_POWERSTATE_STANDBY == target_state))
         {
-            //Special handling. Although the new power state is standby, leave display enabled.
+            /* Special handling. Although the new power state is standby, leave display enabled. App will transition TV to ON state immediately afterwards anyway, 
+               and if we turn off the display to match standby state here, it'll confuse the user into thinking that TV has gone into standby for good. */
             sync_display_ports_with_power_state(IARM_BUS_PWRMGR_POWERSTATE_ON);
         }
         else
@@ -351,7 +352,16 @@ namespace pwrMgrProductTraits
     {
         bool ret = true;
         sync_power_led_with_power_state(target_state);
-        sync_display_ports_with_power_state(target_state);
+        if ((IARM_BUS_PWRMGR_POWERSTATE_ON == last_known_state) && (IARM_BUS_PWRMGR_POWERSTATE_STANDBY == target_state))
+        {
+            /* Special handling. Although the new power state is standby, leave display enabled. App will transition TV to ON state immediately afterwards anyway, 
+               and if we turn off the display to match standby state here, it'll confuse the user into thinking that TV has gone into standby for good. */
+            sync_display_ports_with_power_state(IARM_BUS_PWRMGR_POWERSTATE_ON);
+        }
+        else
+        {
+            sync_display_ports_with_power_state(target_state);
+        }
 
         /*  Reset applicable 'silent reboot' flags to appropriate values.
             This device is booting into 'target_state' power state. Sync the bootloader flags to match the this state. That means, if the new state is ON,
