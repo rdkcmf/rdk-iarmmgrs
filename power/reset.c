@@ -35,6 +35,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <secure_wrapper.h>
+#include <thread>
 
 #include "comcastIrKeyCodes.h"
 #include "libIBus.h"
@@ -646,16 +647,32 @@ void performReboot(const char * requestor, const char * reboot_reason_custom, co
     eventData.requestor[sizeof(eventData.requestor) - 1] = '\0';
     IARM_Bus_BroadcastEvent( IARM_BUS_PWRMGR_NAME, IARM_BUS_PWRMGR_EVENT_REBOOTING, (void *)&eventData, sizeof(eventData));
 
-    v_secure_system("echo 0 > /opt/.rebootFlag");
-    sleep(5);
-    if(0 == access("/rebootNow.sh", F_OK))
-    {
-        v_secure_system("/rebootNow.sh -s '%s' -r '%s' -o '%s'", requestor, reboot_reason_custom, reboot_reason_other);
-    }
-    else
-    {
-        v_secure_system("/lib/rdk/rebootNow.sh -s '%s' -r '%s' -o '%s'", requestor, reboot_reason_custom, reboot_reason_other);
-    }
+    /*
+     * performReboot() can be called from the context of an RPC, and the sleep() call below can trigger RPC timeouts. So the time-consuming operations
+     * must be handled asynchronously to let this function return promptly. Make a copy of the necessary members so that they can be accessed
+     * safely from the new thread.
+     * Note: not using strndup() here as lengths of the incoming string are already sanitized.
+    */
+    char * requestor_cpy = strdup(requestor); 
+    char * reboot_reason_custom_cpy = strdup(reboot_reason_custom);
+    char * reboot_reason_other_cpy = strdup(reboot_reason_other);
+
+    std::thread async_reboot_thread([requestor_cpy, reboot_reason_custom_cpy, reboot_reason_other_cpy] () {
+        v_secure_system("echo 0 > /opt/.rebootFlag");
+        sleep(5);
+        if(0 == access("/rebootNow.sh", F_OK))
+        {
+            v_secure_system("/rebootNow.sh -s '%s' -r '%s' -o '%s'", requestor_cpy, reboot_reason_custom_cpy, reboot_reason_other_cpy);
+        }
+        else
+        {
+            v_secure_system("/lib/rdk/rebootNow.sh -s '%s' -r '%s' -o '%s'", requestor_cpy, reboot_reason_custom_cpy, reboot_reason_other_cpy);
+        }
+        free(requestor_cpy);
+        free(reboot_reason_custom_cpy);
+        free(reboot_reason_other_cpy);
+        });
+    async_reboot_thread.detach();
 }
 
 /** @} */
