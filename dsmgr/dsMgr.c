@@ -595,8 +595,8 @@ static int  _SetResolution(int* handle,dsVideoPortType_t PortType)
                 		for (i = numResolutions-1; i >= 0; i--)
                 		{
                         		setResn = &(edidData.suppResolutionList[i]);
-                        		size_t pNumResolutions = dsUTL_DIM(kResolutions);
-                        		for (size_t j = pNumResolutions-1; j >=0; j--)
+                        		int pNumResolutions = dsUTL_DIM(kResolutions);
+                        		for (int j = pNumResolutions-1; j >=0; j--)
 		        		{
 		                		dsVideoPortResolution_t *pfResolution = &kResolutions[j];
 		                		if (0 == (strcmp(pfResolution->name,setResn->name)))
