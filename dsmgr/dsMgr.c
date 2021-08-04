@@ -73,6 +73,7 @@ extern IARM_Result_t _dsGetStereoAuto(void *arg);
 extern IARM_Result_t _dsIsDisplaySurround(void *arg);
 extern IARM_Result_t _dsGetForceDisable4K(void *arg);
 extern IARM_Result_t _dsSetBackgroundColor(void *arg);
+extern IARM_Result_t _dsGetIgnoreEDIDStatus(void *arg);
 extern bool isComponentPortPresent();
 
 extern bool dsGetHDMIDDCLineStatus(void);
@@ -103,6 +104,7 @@ static gboolean heartbeatMsg(gpointer data);
 static gboolean _SetResolutionHandler(gpointer data);
 static guint hotplug_event_src = 0;
 static gboolean dumpEdidOnChecksumDiff(gpointer data);
+static bool IsIgnoreEdid_gs = false;
 
 static int getVideoPortHandle(_dsVideoPortType_t port)
 {
@@ -143,7 +145,12 @@ IARM_Result_t DSMgr_Start()
 	dsMgr_init();
 	  
 	iInitResnFlag = 1;
-
+        dsEdidIgnoreParam_t ignoreEdidParam;
+        memset(&ignoreEdidParam,0,sizeof(ignoreEdidParam));
+        ignoreEdidParam.handle = dsVIDEOPORT_TYPE_HDMI;
+        _dsGetIgnoreEDIDStatus(&ignoreEdidParam);
+	IsIgnoreEdid_gs = ignoreEdidParam.ignoreEDID;
+	__TIMESTAMP();printf("ResOverride DSMgr_Start IsIgnoreEdid_gs: %d\n", IsIgnoreEdid_gs);
 	/*Register the Events */
 	IARM_Bus_RegisterEventHandler(IARM_BUS_SYSMGR_NAME,IARM_BUS_SYSMGR_EVENT_SYSTEMSTATE,_EventHandler);
 	IARM_Bus_RegisterEventHandler(IARM_BUS_DSMGR_NAME,IARM_BUS_DSMGR_EVENT_HDMI_HOTPLUG,_EventHandler);
@@ -377,7 +384,9 @@ static void _EventHandler(const char *owner, IARM_EventId_t eventId, void *data,
                                                     hotplug_event_src = 0;
                                                 }
                                                 setBGColor(dsVIDEO_BGCOLOR_NONE);
-                                                _SetVideoPortResolution();
+                                                if (!IsIgnoreEdid_gs) {
+                                                    _SetVideoPortResolution();
+                                                }
                                                 g_timeout_add_seconds((guint)1,dumpEdidOnChecksumDiff,NULL);
 					} 
 					else if (status == dsHDCP_STATUS_AUTHENTICATIONFAILURE )
@@ -386,7 +395,9 @@ static void _EventHandler(const char *owner, IARM_EventId_t eventId, void *data,
 						HDCPeventData.data.systemStates.state =  0;
                                                 setBGColor(dsVIDEO_BGCOLOR_BLUE);
                                                 bHDCPAuthenticated = false;
-                                                _SetVideoPortResolution();
+                                                if (!IsIgnoreEdid_gs) {
+                                                    _SetVideoPortResolution();
+                                                }
                                                 g_timeout_add_seconds((guint)1,dumpEdidOnChecksumDiff,NULL);
 					}
 
