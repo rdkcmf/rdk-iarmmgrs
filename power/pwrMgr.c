@@ -1162,11 +1162,13 @@ static IARM_Result_t _SetPowerState(void *arg)
 				   - To handle this, the handler is called every 30 sec and check for expiry of deep sleep wakeup timeout. 
 				   */    
 				time(&timeAtDeepSleep);
-				wakeup_event_src = g_timeout_add_seconds ((guint)30,deep_sleep_wakeup_fn,pwrMgr_Gloop); 
-				__TIMESTAMP();LOG("Added Deep Sleep Wakeup Time Source %d for %d Sec \r\n",wakeup_event_src,deep_sleep_wakeup_timeout_sec);
 #ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
+				wakeup_event_src = g_timeout_add_seconds ((guint)1, deep_sleep_wakeup_fn, pwrMgr_Gloop);
 				__TIMESTAMP();LOG("Networkstandbymode for Source %d is: %s \r\n",wakeup_event_src, (nwStandbyMode_gs?("Enabled"):("Disabled")));
+#else
+				wakeup_event_src = g_timeout_add_seconds ((guint)30, deep_sleep_wakeup_fn, pwrMgr_Gloop);
 #endif
+				__TIMESTAMP();LOG("Added Deep Sleep Wakeup Time Source %d for %d Sec \r\n",wakeup_event_src,deep_sleep_wakeup_timeout_sec);
 
 			}
 			else if(wakeup_event_src)
