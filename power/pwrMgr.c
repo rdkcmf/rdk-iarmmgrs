@@ -74,6 +74,7 @@ extern "C"
 #include "iarmcec.h"
 #include "deepSleepMgr.h"
 #include "productTraits.h"
+#include "exception.hpp"
 
 /* For glib APIs*/
 #include <glib.h>
@@ -1882,7 +1883,21 @@ int _SetAVPortsPowerState(IARM_Bus_PWRMgr_PowerState_t powerState)
             device::List<device::AudioOutputPort> audioPorts =  device::Host::getInstance().getAudioOutputPorts();
             for (size_t i = 0; i < audioPorts.size(); i++)
             {
-                audioPorts.at(i).enable();
+                device::AudioOutputPort &vPort = audioPorts.at(i);
+                bool isPortPersistenceValEnabled = true;
+                try {
+                        isPortPersistenceValEnabled = vPort.getEnablePersist();
+                }
+                catch(const device::Exception& err)
+                {
+                        LOG("Audio Port Getting enable persist value failed. Proceeding with true\n");
+                }
+                if(isPortPersistenceValEnabled)
+                {
+                    /*Instead of enabling all the audio ports on power transition */
+                    /*Get the values from persistent storage & update */ 
+                    audioPorts.at(i).enable(); 
+                }
             }
 
             for (size_t i = 0; i < videoPorts.size(); i++)
