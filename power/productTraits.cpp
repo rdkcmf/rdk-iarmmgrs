@@ -1,11 +1,15 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <fstream>
+#include <unistd.h>
+#include <glib.h>
 #include "pwrlogger.h"
 #include "mfrTypes.h"
 #include "mfrMgr.h"
 #include "productTraits.h"
 #include "frontPanelIndicator.hpp"
+
 using namespace pwrMgrProductTraits;
 extern int _SetAVPortsPowerState(IARM_Bus_PWRMgr_PowerState_t powerState);
 /*
@@ -15,8 +19,70 @@ extern int _SetAVPortsPowerState(IARM_Bus_PWRMgr_PowerState_t powerState);
     * default-stb-eu
     * default-tv-eu
 */
-
+const unsigned int REBOOT_REASON_RETRY_INTERVAL_SECONDS = 2;
 ux_controller * ux_controller::singleton = nullptr;
+static reboot_type_t getRebootType()
+{
+    const char * file_updated_flag = "/tmp/Update_rebootInfo_invoked";
+    const char * reboot_info_file_name = "/opt/secure/reboot/previousreboot.info";
+    const char * hard_reboot_match_string = R"("reason":"POWER_ON_RESET")";
+    reboot_type_t ret = reboot_type_t::SOFT;
+
+    //Check whether file has been updated first. If not, the data we read from the file is not valid.
+    if(0 != access(file_updated_flag, F_OK))
+    {
+        LOG("%s: Error! Reboot info file isn't updated yet.\n", __func__);
+        ret = reboot_type_t::UNAVAILABLE;
+    }
+    else
+    {
+        std::ifstream reboot_info_file(reboot_info_file_name);
+        std::string line;
+        if (true == reboot_info_file.is_open())
+        {
+            while(std::getline(reboot_info_file, line))
+            {
+                if(std::string::npos != line.find(hard_reboot_match_string))
+                {
+                   LOG("%s: Detected hard reboot.\n", __func__);
+                    ret = reboot_type_t::HARD;
+                    break;
+                }
+            }
+        }
+        else
+            LOG("%s: Failed to open file\n", __func__);
+    }
+    return ret;
+}
+
+static gboolean reboot_reason_cb(gpointer data)
+{
+    static unsigned int count = 0;
+    constexpr unsigned int max_count = 120 / REBOOT_REASON_RETRY_INTERVAL_SECONDS; //Stop after 2 minutes.
+
+    reboot_type_t reboot_type = getRebootType();
+    if(reboot_type_t::UNAVAILABLE == reboot_type)
+    {
+        if(max_count >= count++)
+        {
+            return G_SOURCE_CONTINUE;
+        }
+        else
+        {
+            LOG("%s: Exceeded retry limit.\n", __func__);
+            return G_SOURCE_REMOVE;
+        }
+    }
+    else
+    {
+        LOG("%s: Got reboot reason in async check. Applying display configuration.\n", __func__);
+        ux_controller * ptr = static_cast <ux_controller *> (data);
+        ptr->sync_display_ports_with_reboot_reason(reboot_type);
+        return G_SOURCE_REMOVE;
+    }
+}
+
 namespace pwrMgrProductTraits
 {
 
@@ -105,6 +171,7 @@ namespace pwrMgrProductTraits
         enableSilentRebootSupport = true;
         preferedPowerModeOnReboot = POWER_MODE_LAST_KNOWN;
         invalidateAsyncBootloaderPattern = false;
+        firstPowerTransitionComplete = false;
 
         if (DEVICE_TYPE_STB == deviceType)
         {
@@ -328,6 +395,12 @@ namespace pwrMgrProductTraits
 
     bool ux_controller_tv::applyPowerStateChangeConfig(IARM_Bus_PWRMgr_PowerState_t new_state, IARM_Bus_PWRMgr_PowerState_t prev_state)
     {
+        mutex.lock();
+        if(false == firstPowerTransitionComplete)
+            firstPowerTransitionComplete = true; //In case we're still polling for reboot reason to turn on/off display, this will effectively cancel that job.
+            //The new power state takes precedence.
+        mutex.unlock();
+
         sync_display_ports_with_power_state(new_state);
         bool ret = set_bootloader_pattern((IARM_BUS_PWRMGR_POWERSTATE_ON == new_state ? mfrBL_PATTERN_NORMAL : mfrBL_PATTERN_SILENT_LED_ON));
         return ret;
@@ -351,11 +424,33 @@ namespace pwrMgrProductTraits
     {
         bool ret = true;
         sync_power_led_with_power_state(target_state);
+
         if ((IARM_BUS_PWRMGR_POWERSTATE_ON == last_known_state) && (IARM_BUS_PWRMGR_POWERSTATE_STANDBY == target_state))
         {
-            /* Special handling. Although the new power state is standby, leave display enabled. App will transition TV to ON state immediately afterwards anyway, 
-               and if we turn off the display to match standby state here, it'll confuse the user into thinking that TV has gone into standby for good. */
-            sync_display_ports_with_power_state(IARM_BUS_PWRMGR_POWERSTATE_ON);
+            /* Special handling:
+               Although the new power state is standby, leave display enabled. If last known power state is ON, app will transition TV to ON state
+               immediately afterwards anyway, so if we turn off the display to match standby state here, it'll confuse the user into thinking that TV has gone into
+               standby for good.
+               
+               An exception to this criteria is if we just got here after a hard reboot. In that case, the product requirement is to go straight to standby
+               and stay there. Therefore we won't turn on the display here. This is to account for use cases where there is a power failure and power is restored
+               when user is away - in that scenario, we assume that there is no audience and keep the TV in standby.
+               */
+            reboot_type_t isHardReboot = getRebootType();
+            switch (isHardReboot)
+            {
+                case reboot_type_t::HARD:
+                    sync_display_ports_with_power_state(IARM_BUS_PWRMGR_POWERSTATE_STANDBY);
+                    break;
+
+                case reboot_type_t::SOFT:
+                    sync_display_ports_with_power_state(IARM_BUS_PWRMGR_POWERSTATE_ON);
+                    break;
+
+                default: //Unavailable. Take no action now, but keep checking every N seconds.
+                    g_timeout_add_seconds(REBOOT_REASON_RETRY_INTERVAL_SECONDS, reboot_reason_cb, this);
+                    break;
+            }
         }
         else
         {
@@ -389,6 +484,19 @@ namespace pwrMgrProductTraits
     IARM_Bus_PWRMgr_PowerState_t ux_controller_tv::getPreferredPostRebootPowerState(IARM_Bus_PWRMgr_PowerState_t prev_state) const
     {
         return IARM_BUS_PWRMGR_POWERSTATE_STANDBY;
+    }
+
+    void ux_controller_tv::sync_display_ports_with_reboot_reason(reboot_type_t reboot_type)
+    {
+        // Assumes the TV is rebooting from ON state to STANDBY state.
+        mutex.lock();
+        if(false == firstPowerTransitionComplete)
+        {
+            mutex.unlock();
+            sync_display_ports_with_power_state(reboot_type_t::HARD == reboot_type? IARM_BUS_PWRMGR_POWERSTATE_STANDBY : IARM_BUS_PWRMGR_POWERSTATE_ON);
+        }
+        else // Do nothing, as we're already past the first power transition and display configuration has already been set as appropriate.
+            mutex.unlock();
     }
 /********************************* End ux_controller_tv class definitions ********************************/
 

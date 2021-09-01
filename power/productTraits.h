@@ -57,6 +57,8 @@ namespace pwrMgrProductTraits
         POWER_MODE_MAX
     } powerModeTrait_t;
 
+    enum class reboot_type_t { HARD, SOFT, UNAVAILABLE};
+
     /*
         ux_controller or 'user experience controller' is in charge of maintaining and applying the user experience attributes owned by power manager.
         That means attributes like this:
@@ -74,6 +76,7 @@ namespace pwrMgrProductTraits
         std::string name;
         deviceType_t deviceType;
         bool invalidateAsyncBootloaderPattern;
+        bool firstPowerTransitionComplete;
         mutable std::mutex mutex;
 
         bool enableMultiColourLedSupport;
@@ -108,6 +111,8 @@ namespace pwrMgrProductTraits
         virtual bool applyPreMaintenanceRebootConfig(IARM_Bus_PWRMgr_PowerState_t current_state) {return false;}
         virtual bool applyPostRebootConfig(IARM_Bus_PWRMgr_PowerState_t new_state, IARM_Bus_PWRMgr_PowerState_t prev_state) {return false;}
         virtual IARM_Bus_PWRMgr_PowerState_t getPreferredPostRebootPowerState(IARM_Bus_PWRMgr_PowerState_t prev_state) const {return prev_state;}
+        virtual void sync_display_ports_with_reboot_reason(reboot_type_t type) {};
+
 
     };
 
@@ -142,6 +147,7 @@ namespace pwrMgrProductTraits
         virtual bool applyPreMaintenanceRebootConfig(IARM_Bus_PWRMgr_PowerState_t current_state) override;
         virtual bool applyPostRebootConfig(IARM_Bus_PWRMgr_PowerState_t new_state, IARM_Bus_PWRMgr_PowerState_t prev_state) override;
         virtual IARM_Bus_PWRMgr_PowerState_t getPreferredPostRebootPowerState(IARM_Bus_PWRMgr_PowerState_t prev_state) const override;
+        virtual void sync_display_ports_with_reboot_reason(reboot_type_t type) override;
     };
 
     class ux_controller_stb : public ux_controller
