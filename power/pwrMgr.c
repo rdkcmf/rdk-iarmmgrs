@@ -783,6 +783,15 @@ static void _irEventHandler(const char *owner, IARM_EventId_t eventId, void *dat
             /* Intercept PowerKey */
             IARM_Bus_PWRMgr_PowerState_t curState = pSettings->powerState;
             IARM_Bus_PWRMgr_PowerState_t newState = ((curState == IARM_BUS_PWRMGR_POWERSTATE_ON) ? IARM_BUS_PWRMGR_POWERSTATE_STANDBY : IARM_BUS_PWRMGR_POWERSTATE_ON);
+#ifdef ENABLE_LLAMA_PLATCO
+            /*To avoid state transition from DEEPSLEEP to ON, that could affect state change of RDKTV platforms LLAMA-3152*/
+	    if(curState == IARM_BUS_PWRMGR_POWERSTATE_STANDBY_DEEP_SLEEP && keyCode != KED_DEEPSLEEP_WAKEUP)
+	    {
+		    LOG(" Ignoring the IR Events in Deepsleep Mode ..\r\n");
+		    return;
+	    }
+#endif
+
 #ifdef _ENABLE_FP_KEY_SENSITIVITY_IMPROVEMENT
             //LOG("Power Manager Settings State vs new State(%x, %x) transition state %x \r\n", curState, newState, transitionState);
 #endif           
