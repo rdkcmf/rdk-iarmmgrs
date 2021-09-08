@@ -1113,7 +1113,7 @@ static IARM_Result_t _SetPowerState(void *arg)
 			targetState = newState;
 		}
 #endif
-
+#ifndef ENABLE_LLAMA_PLATCO
 		if (newState != IARM_BUS_PWRMGR_POWERSTATE_ON) {
 			time(&xre_timer); // Hack to fix DELIA-11393
 			LOG("Invoking clean up script\r\n");
@@ -1127,7 +1127,7 @@ static IARM_Result_t _SetPowerState(void *arg)
 				system("/lib/rdk/standbyCleanup.sh --forceShutdown");
 			}
 		}
-
+#endif
 		/* Independent of Deep sleep */
 		PLAT_API_SetPowerState(newState);
 
