@@ -329,7 +329,6 @@ namespace pwrMgrProductTraits
     bool ux_controller_tv::applyPowerStateChangeConfig(IARM_Bus_PWRMgr_PowerState_t new_state, IARM_Bus_PWRMgr_PowerState_t prev_state)
     {
         sync_display_ports_with_power_state(new_state);
-        sync_power_led_with_power_state(new_state);        
         bool ret = set_bootloader_pattern((IARM_BUS_PWRMGR_POWERSTATE_ON == new_state ? mfrBL_PATTERN_NORMAL : mfrBL_PATTERN_SILENT_LED_ON));
         return ret;
     }
