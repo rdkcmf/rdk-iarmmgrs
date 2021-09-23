@@ -83,6 +83,26 @@ static gboolean reboot_reason_cb(gpointer data)
     }
 }
 
+static bool isTVOperatingInFactory() //TODO: This is a placeholder.
+{
+    bool ret = true;
+    const char * tv_activated_flag_filename = "/opt/www/authService/as.dat";
+    if(0 == access(tv_activated_flag_filename, F_OK))
+        ret = false;
+    LOG("%s: %s\n", __func__, (true == ret ? "true" : "false"));
+    return ret;
+}
+
+static inline bool doForceDisplayOnPostReboot() //Note: only to be used when the power state before reboot was ON.
+{
+    const char * flag_filename = "/opt/force_display_on_after_reboot";
+    bool ret = false;
+    if(0 == access(flag_filename, F_OK))
+        ret = true;
+    LOG("%s: %s\n", __func__, (true == ret ? "true" : "false"));
+    return ret;
+}
+
 namespace pwrMgrProductTraits
 {
 
@@ -435,21 +455,29 @@ namespace pwrMgrProductTraits
                An exception to this criteria is if we just got here after a hard reboot. In that case, the product requirement is to go straight to standby
                and stay there. Therefore we won't turn on the display here. This is to account for use cases where there is a power failure and power is restored
                when user is away - in that scenario, we assume that there is no audience and keep the TV in standby.
+
+               Important: The above behaviour can be a nuisance during production or testing as it can lead to the TV going dark during various production/QA stages immediately
+               after a hard reboot. Use doForceDisplayOnPostReboot() to detect those scenarios and act accordingly.
                */
-            reboot_type_t isHardReboot = getRebootType();
-            switch (isHardReboot)
+            if(true == doForceDisplayOnPostReboot())
+                sync_display_ports_with_power_state(IARM_BUS_PWRMGR_POWERSTATE_ON);
+            else
             {
-                case reboot_type_t::HARD:
-                    sync_display_ports_with_power_state(IARM_BUS_PWRMGR_POWERSTATE_STANDBY);
-                    break;
+                reboot_type_t isHardReboot = getRebootType();
+                switch (isHardReboot)
+                {
+                    case reboot_type_t::HARD:
+                        sync_display_ports_with_power_state(IARM_BUS_PWRMGR_POWERSTATE_STANDBY);
+                        break;
 
-                case reboot_type_t::SOFT:
-                    sync_display_ports_with_power_state(IARM_BUS_PWRMGR_POWERSTATE_ON);
-                    break;
+                    case reboot_type_t::SOFT:
+                        sync_display_ports_with_power_state(IARM_BUS_PWRMGR_POWERSTATE_ON);
+                        break;
 
-                default: //Unavailable. Take no action now, but keep checking every N seconds.
-                    g_timeout_add_seconds(REBOOT_REASON_RETRY_INTERVAL_SECONDS, reboot_reason_cb, this);
-                    break;
+                    default: //Unavailable. Take no action now, but keep checking every N seconds.
+                        g_timeout_add_seconds(REBOOT_REASON_RETRY_INTERVAL_SECONDS, reboot_reason_cb, this);
+                        break;
+                }
             }
         }
         else
