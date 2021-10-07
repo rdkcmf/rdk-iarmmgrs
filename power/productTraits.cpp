@@ -11,6 +11,7 @@
 #include "frontPanelIndicator.hpp"
 
 using namespace pwrMgrProductTraits;
+extern bool isTVOperatingInFactory();
 extern int _SetAVPortsPowerState(IARM_Bus_PWRMgr_PowerState_t powerState);
 /*
     Following profiles are supported:
@@ -81,16 +82,6 @@ static gboolean reboot_reason_cb(gpointer data)
         ptr->sync_display_ports_with_reboot_reason(reboot_type);
         return G_SOURCE_REMOVE;
     }
-}
-
-static bool isTVOperatingInFactory() //TODO: This is a placeholder.
-{
-    bool ret = true;
-    const char * tv_activated_flag_filename = "/opt/www/authService/as.dat";
-    if(0 == access(tv_activated_flag_filename, F_OK))
-        ret = false;
-    LOG("%s: %s\n", __func__, (true == ret ? "true" : "false"));
-    return ret;
 }
 
 static inline bool doForceDisplayOnPostReboot() //Note: only to be used when the power state before reboot was ON.
@@ -457,9 +448,9 @@ namespace pwrMgrProductTraits
                when user is away - in that scenario, we assume that there is no audience and keep the TV in standby.
 
                Important: The above behaviour can be a nuisance during production or testing as it can lead to the TV going dark during various production/QA stages immediately
-               after a hard reboot. Use doForceDisplayOnPostReboot() to detect those scenarios and act accordingly.
+               after a hard reboot. Use isTVOperatingInFactory() and doForceDisplayOnPostReboot() to detect those scenarios and act accordingly.
                */
-            if(true == doForceDisplayOnPostReboot())
+            if(true == doForceDisplayOnPostReboot() || (true == isTVOperatingInFactory()))
                 sync_display_ports_with_power_state(IARM_BUS_PWRMGR_POWERSTATE_ON);
             else
             {

@@ -18,7 +18,7 @@
 ##########################################################################
 RM          := rm -rf
 CFLAGS      := -g -fPIC -D_REENTRANT -Wall
-OBJS        := $(patsubst %.c,%.o,$(wildcard *.c)) productTraits.o
+OBJS        := $(patsubst %.c,%.o,$(wildcard *.c)) productTraits.o pwrMgrHelper.o
 CPPLAGS      := -g -fPIC -D_REENTRANT -Wall
 EXECUTABLE  := pwrMgrMain
 
