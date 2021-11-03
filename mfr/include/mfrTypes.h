@@ -65,6 +65,7 @@ typedef enum _mfrSerializedType_t {
     mfrSERIALIZED_TYPE_PDRIVERSION,
     mfrSERIALIZED_TYPE_WIFIMAC,
     mfrSERIALIZED_TYPE_BLUETOOTHMAC,
+    mfrSERIALIZED_TYPE_WPSPIN,
     mfrSERIALIZED_TYPE_MAX,
 } mfrSerializedType_t;
 
