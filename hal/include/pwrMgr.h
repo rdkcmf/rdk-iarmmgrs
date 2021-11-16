@@ -319,6 +319,11 @@ typedef struct _IARM_Bus_PWRMgr_SetWakeupSrcConfig_Param_t{
 #define IARM_BUS_PWRMGR_API_SetWakeupSrcConfig "setWakeupSrcConfig" /*!< sets wakup configuration*/
 #endif
 
+/**
+ * Declare RPC API names and their arguments
+ */
+#define IARM_BUS_PWRMGR_API_handleDeepsleepTimeoutWakeup 		"handleDeepsleepTimeoutWakeup" /*!< Invoke when deepsleep timeout occurs*/
+
 
 #ifdef __cplusplus
 }

@@ -317,6 +317,14 @@ static void _eventHandler(const char *owner, IARM_EventId_t eventId, void *data,
                           break;
                        }
                        }
+#ifdef USE_WAKEUP_TIMER_EVT
+                           DeepSleep_WakeupReason_t wakeupReason = DEEPSLEEP_WAKEUPREASON_UNKNOWN;
+                           int reasonStatus = PLAT_DS_GetLastWakeupReason(&wakeupReason);
+                           if (DEEPSLEEP_WAKEUPREASON_TIMER == wakeupReason){
+                               LOG("Calling IARM_BUS_PWRMGR_API_handleDeepsleepTimeoutWakeup on wakeupReason:%d \n", wakeupReason);
+                               IARM_Bus_Call(IARM_BUS_PWRMGR_NAME, IARM_BUS_PWRMGR_API_handleDeepsleepTimeoutWakeup, NULL, 0);
+                           }
+#endif //End of USE_WAKEUP_TIMER_EVT
                     }
                     IsDeviceInDeepSleep = DeepSleepStatus_Completed;
                 }
@@ -457,6 +465,15 @@ static gboolean deep_sleep_delay_timer_fn(gpointer data)
     {
        LOG("deep_sleep_delay_timer_fn: Failed to enter deepsleep state \n");
     }
+#ifdef USE_WAKEUP_TIMER_EVT
+    //Call pwrmgr InvokeDeepsleepTimeout here
+    DeepSleep_WakeupReason_t wakeupReason = DEEPSLEEP_WAKEUPREASON_UNKNOWN;
+    int reasonStatus = PLAT_DS_GetLastWakeupReason(&wakeupReason);
+    if (DEEPSLEEP_WAKEUPREASON_TIMER == wakeupReason){
+        LOG("Calling IARM_BUS_PWRMGR_API_handleDeepsleepTimeoutWakeup on wakeupReason:%d \n", wakeupReason);
+        IARM_Bus_Call(IARM_BUS_PWRMGR_NAME, IARM_BUS_PWRMGR_API_handleDeepsleepTimeoutWakeup, NULL, 0);
+    }
+#endif //End of USE_WAKEUP_TIMER_EVT
     return FALSE; // Send False so the handler should not be called again
 }
 

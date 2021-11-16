@@ -227,6 +227,8 @@ static IARM_Result_t _HandleReboot(void *arg);
 #ifdef ENABLE_SET_WAKEUP_SRC_CONFIG
 static IARM_Result_t _SetWakeupSrcConfig(void *arg);
 #endif //ENABLE_SET_WAKEUP_SRC_CONFIG
+static IARM_Result_t _handleDeepsleepTimeoutWakeup(void *arg);
+static void*  handleDeepsleepTimeoutWakeupThread (void * arg);
 
 static int _InitSettings(const char *settingsFile);
 static int _WriteSettings(const char *settingsFile);
@@ -393,6 +395,7 @@ IARM_Result_t PWRMgr_Start(int argc, char *argv[])
     IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_GetStandbyVideoState, _GetStandbyVideoState);
     #ifdef ENABLE_DEEP_SLEEP  
         IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_SetDeepSleepTimeOut, _SetDeepSleepTimeOut);
+        IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_handleDeepsleepTimeoutWakeup, _handleDeepsleepTimeoutWakeup);
     #endif  
     IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_SetNetworkStandbyMode, _SetNetworkStandbyMode);
     IARM_Bus_RegisterCall(IARM_BUS_PWRMGR_API_GetNetworkStandbyMode, _GetNetworkStandbyMode);
@@ -1180,7 +1183,11 @@ static IARM_Result_t _SetPowerState(void *arg)
 				   */    
 				time(&timeAtDeepSleep);
 #ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
+	#ifndef USE_WAKEUP_TIMER_EVT
 				wakeup_event_src = g_timeout_add_seconds ((guint)1, deep_sleep_wakeup_fn, pwrMgr_Gloop);
+	#else
+				__TIMESTAMP();LOG("deep_sleep_wakeup_fn is not running\r\n");
+	#endif
 				__TIMESTAMP();LOG("Networkstandbymode for Source %d is: %s \r\n",wakeup_event_src, (nwStandbyMode_gs?("Enabled"):("Disabled")));
 #else
 				wakeup_event_src = g_timeout_add_seconds ((guint)30, deep_sleep_wakeup_fn, pwrMgr_Gloop);
@@ -1986,7 +1993,6 @@ static IARM_Result_t _SysModeChange(void *arg)
     return IARM_RESULT_SUCCESS;
 }
 
-
 #ifdef _ENABLE_FP_KEY_SENSITIVITY_IMPROVEMENT
 static void *_AsyncPowerTransition(void *) 
 {
@@ -2291,6 +2297,42 @@ static IARM_Result_t _SetDeepSleepTimeOut(void *arg)
     return IARM_RESULT_IPCCORE_FAIL; 
 }
 
+static void* handleDeepsleepTimeoutWakeupThread (void * arg)
+{
+    __TIMESTAMP();LOG("Entering %s \r\n", __FUNCTION__);
+    IARM_BUS_PWRMgr_DeepSleepTimeout_EventData_t param;
+    param.timeout = deep_sleep_wakeup_timeout_sec;
+    IARM_Bus_BroadcastEvent( IARM_BUS_PWRMGR_NAME,
+    IARM_BUS_PWRMGR_EVENT_DEEPSLEEP_TIMEOUT, (void *)&param, sizeof(param));
+#if !defined (_DISABLE_SCHD_REBOOT_AT_DEEPSLEEP)
+    __TIMESTAMP();LOG("Reboot the box due to Deep Sleep Timer Expiry : %d \r\n", param.timeout);
+#else
+    /*Scheduled maintanace reboot is disabled for XiOne/Llama/Platco. Instead state will change to LIGHT_SLEEP*/
+    IARM_Bus_PWRMgr_SetPowerState_Param_t paramSetPwr;
+    PWRMgr_Settings_t *pSettings = &m_settings;
+    __TIMESTAMP();LOG("deep_sleep_wakeup_fn: Set Device to light sleep on Deep Sleep timer expiry..\r\n");
+    pSettings->powerState = IARM_BUS_PWRMGR_POWERSTATE_STANDBY_DEEP_SLEEP;
+    paramSetPwr.newState = IARM_BUS_PWRMGR_POWERSTATE_STANDBY_LIGHT_SLEEP;
+    _SetPowerState((void *)&paramSetPwr);
+#endif /*End of _DISABLE_SCHD_REBOOT_AT_DEEPSLEEP*/
+}
+
+static IARM_Result_t  _handleDeepsleepTimeoutWakeup (void *arg)
+{
+    IARM_Result_t retCode = IARM_RESULT_SUCCESS;
+    //Deepsleep wakeup will take time and a low freq event, hence using detach thread approch here.
+    pthread_t asyncDeepsleepTimeoutThreadId = 0;
+    int err = pthread_create(&asyncDeepsleepTimeoutThreadId, NULL, handleDeepsleepTimeoutWakeupThread, NULL);
+    if(err != 0){
+        __TIMESTAMP();LOG("handleDeepsleepTimeoutWakeup thread create failed \r\n");
+    }else {
+        err = pthread_detach(asyncDeepsleepTimeoutThreadId);
+        if(err != 0){
+            __TIMESTAMP();LOG("handleDeepsleepTimeoutWakeup thread detach failed \r\n");
+        }
+    }
+    return retCode;
+}
 
 /*  Wakeup the box after wakeup timeout for maintenance activities
     Reboot the box and entered to  light sleep.
@@ -2303,21 +2345,8 @@ static gboolean deep_sleep_wakeup_fn(gpointer data)
         
     if(timeout >= deep_sleep_wakeup_timeout_sec)
     {
-        IARM_BUS_PWRMgr_DeepSleepTimeout_EventData_t param;
-        param.timeout = deep_sleep_wakeup_timeout_sec;
-        IARM_Bus_BroadcastEvent( IARM_BUS_PWRMGR_NAME,
-        IARM_BUS_PWRMGR_EVENT_DEEPSLEEP_TIMEOUT, (void *)&param, sizeof(param));
-#if !defined (_DISABLE_SCHD_REBOOT_AT_DEEPSLEEP)
-        __TIMESTAMP();LOG("Reboot the box due to Deep Sleep Timer Expiry : %d \r\n", param.timeout);
-#else
-        /*Scheduled maintanace reboot is disabled for XiOne/Llama/Platco. Instead state will change to LIGHT_SLEEP*/
-        IARM_Bus_PWRMgr_SetPowerState_Param_t paramSetPwr;
-        PWRMgr_Settings_t *pSettings = &m_settings;
-        __TIMESTAMP();LOG("deep_sleep_wakeup_fn: Set Device to light sleep on Deep Sleep timer expiry..\r\n");
-        pSettings->powerState = IARM_BUS_PWRMGR_POWERSTATE_STANDBY_DEEP_SLEEP;
-        paramSetPwr.newState = IARM_BUS_PWRMGR_POWERSTATE_STANDBY_LIGHT_SLEEP;
-        _SetPowerState((void *)&paramSetPwr);
-#endif /*End of _DISABLE_SCHD_REBOOT_AT_DEEPSLEEP*/
+        //Calling synchronously here
+        handleDeepsleepTimeoutWakeupThread (NULL);
         return FALSE;
     }
 return TRUE;
