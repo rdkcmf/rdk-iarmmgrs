@@ -18,8 +18,8 @@
 ##########################################################################
 #
 
-SUBDIRS = dsmgr sysmgr deviceUpdateMgr ir receiver power pwrstate deepsleepmgr test vrexmgr $(SUBDIR_MFR)
-DIST_SUBDIRS = dsmgr sysmgr deviceUpdateMgr ir receiver power pwrstate deepsleepmgr test vrexmgr $(SUBDIR_MFR)
+SUBDIRS = dsmgr sysmgr deviceUpdateMgr ir receiver power pwrmgr2 pwrstate deepsleepmgr test vrexmgr $(SUBDIR_MFR)
+DIST_SUBDIRS = dsmgr sysmgr deviceUpdateMgr ir receiver power pwrmgr2 pwrstate deepsleepmgr test vrexmgr $(SUBDIR_MFR)
 
 IPK_GEN_PATH = $(abs_top_builddir)/ipk
 IPK_GEN_STAGING_DIR=$(abs_top_builddir)/staging_dir
@@ -37,6 +37,7 @@ package_ipk:
 	cp -rf $(IPK_GEN_STAGING_DIR)/bin/irMgrMain $(IPK_GEN_STAGING_DIR)/usr/bin/
 	cp -P -rf $(IPK_GEN_STAGING_DIR)/lib/libuinput.* $(IPK_GEN_STAGING_DIR)/usr/lib/
 	cp -rf $(IPK_GEN_STAGING_DIR)/bin/pwrMgrMain $(IPK_GEN_STAGING_DIR)/usr/bin/
+	cp -rf $(IPK_GEN_STAGING_DIR)/bin/pwrMgrMain2 $(IPK_GEN_STAGING_DIR)/usr/bin/
 	cp -rf $(IPK_GEN_STAGING_DIR)/bin/pwrstate_notifier $(IPK_GEN_STAGING_DIR)/usr/bin/
 	cp -rf $(IPK_GEN_STAGING_DIR)/bin/deepSleepMgrMain $(IPK_GEN_STAGING_DIR)/usr/bin/
 	!(test -s $(IPK_GEN_STAGING_DIR)/bin/mfrMgrMain) || cp -rf $(IPK_GEN_STAGING_DIR)/bin/mfrMgrMain $(IPK_GEN_STAGING_DIR)/usr/bin/

@@ -58,6 +58,8 @@
 #include "dsAudioSettings.h"
 #include "dsAudio.h"
 #include "safec_lib.h"
+#include "rfcapi.h"
+#include "dsMgrPwrEventListener.h"
 
 extern IARM_Result_t _dsSetResolution(void *arg);
 extern IARM_Result_t _dsGetResolution(void *arg);
@@ -89,12 +91,14 @@ static pthread_mutex_t tdsMutexLock;
 static pthread_cond_t  tdsMutexCond;
 static void* _DSMgrResnThreadFunc(void *arg);
 static void _setAudioMode();
-static void _setEASAudioMode();
+void _setEASAudioMode();
 static int iResnCount = 5;
 static int iInitResnFlag = 0;
 static bool bHDCPAuthenticated = false;
-static IARM_Bus_Daemon_SysMode_t isEAS = IARM_BUS_SYS_MODE_NORMAL; // Default is Normal Mode
+static bool bPwrMgeRFCEnabled = false;
+IARM_Bus_Daemon_SysMode_t isEAS = IARM_BUS_SYS_MODE_NORMAL; // Default is Normal Mode
 
+#define RFC_PWRMGR2 "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.Power.PwrMgr2.Enable"
 
 /*DSMgr Glib variables */
 /* For glib APIs*/
@@ -158,7 +162,20 @@ IARM_Result_t DSMgr_Start()
 
 	/*Register EAS handler so that we can ensure audio settings for EAS */
 	IARM_Bus_RegisterCall(IARM_BUS_COMMON_API_SysModeChange, _SysModeChange);
-	
+
+    RFC_ParamData_t rfcParam;
+    WDMP_STATUS status = getRFCParameter("dsMgr", RFC_PWRMGR2, &rfcParam);
+    if(strncmp(rfcParam.value, "true",4) == 0)
+    {
+        bPwrMgeRFCEnabled= true;
+        __TIMESTAMP(); printf("dsMgr:RFC PwrMgr2 feature enabled \r\n");
+    }
+
+    if(bPwrMgeRFCEnabled)
+	{
+        /*Refactored dsMGR code*/
+        initPwrEventListner();   
+	}
 	/* Create  Thread for listening Hot Plug events */
 	pthread_mutex_init (&tdsMutexLock, NULL);
 	pthread_cond_init (&tdsMutexCond, NULL);
@@ -810,7 +827,7 @@ static gboolean _SetResolutionHandler(gpointer data)
 }
 
 
-static void _setEASAudioMode()
+void _setEASAudioMode()
 {
     
     if (isEAS != IARM_BUS_SYS_MODE_EAS) {

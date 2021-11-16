@@ -1,4 +1,3 @@
-#!/bin/sh
 ##########################################################################
 # If not stated otherwise in this file or this component's Licenses.txt
 # file the following copyright and licenses apply:
@@ -17,16 +16,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##########################################################################
-OPTS=""
+[Unit]
+Description=Power Mgr (pwrmgrSwitch).
+After=securemount.service
 
-if [ -n "$D" ]; then
-    OPTS="--root=$D"
-fi
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c '/usr/bin/start_pwrmgr.sh'
+RemainAfterExit=true
+StandardOutput=journal
 
-if type systemctl >/dev/null 2>/dev/null; then
-	if [ -z "$D" ]; then
-		systemctl stop diskmgr.service irmgr.service pwrmgrSwitch.service pwrmgr.service pwrmgr2.service dsmgr.service sysmgr.service tr69bus.service deviceupdatemgr.service mfrmgr.service vrexmgr.service
-	fi
-
-	systemctl $OPTS disable diskmgr.service irmgr.service pwrmgrSwitch.service pwrmgr.service pwrmgr2.service dsmgr.service sysmgr.service tr69bus.service deviceupdatemgr.service mfrmgr.service vrexmgr.service
-fi
+[Install]
+WantedBy=multi-user.target

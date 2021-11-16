@@ -224,7 +224,6 @@ namespace pwrMgrProductTraits
     {
         _SetAVPortsPowerState(power_state);
     }
-
     bool ux_controller::initialize_ux_controller(unsigned int profile_id) // Not thread-safe
     {
         bool ret = true;

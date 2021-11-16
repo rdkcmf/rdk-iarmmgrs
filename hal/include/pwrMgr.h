@@ -123,9 +123,7 @@ typedef struct _PWRMgr_EventData_t {
             #ifdef ENABLE_DEEP_SLEEP
                 uint32_t deep_sleep_timeout;    
             #endif
-            #ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
-                bool nwStandbyMode;
-            #endif
+            bool nwStandbyMode;
 	} state; 
 	#ifdef ENABLE_THERMAL_PROTECTION
 	struct _THERM_DATA{
@@ -174,6 +172,7 @@ typedef struct _IARM_Bus_PWRMgr_SetPowerState_Param_t {
  */
 typedef struct _IARM_Bus_PWRMgr_GetPowerState_Param_t {
 	IARM_Bus_PWRMgr_PowerState_t curState;        /*!< Current powerstate of the box*/ 
+	IARM_Bus_PWRMgr_PowerState_t prevState;        /*!< Current powerstate of the box*/ 
 } IARM_Bus_PWRMgr_GetPowerState_Param_t;
 
 #define IARM_BUS_PWRMGR_API_WareHouseReset		"WareHouseReset" /*!< Reset the box to warehouse state*/

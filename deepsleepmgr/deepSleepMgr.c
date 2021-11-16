@@ -269,17 +269,16 @@ static void _eventHandler(const char *owner, IARM_EventId_t eventId, void *data,
                         int retryCount = 0;
                         while(retryCount< 5)
                         {
-#ifdef ENABLE_DEEPSLEEP_WAKEUP_EVT
                         LOG("Device entering Deep sleep Mode.. \r\n");
                         bool userWakeup = 0;
 #ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
                         nwStandbyMode_gs = param->data.state.nwStandbyMode;
-                        LOG("\nCalling PLAT_DS_SetNetworkStandby with nwStandbyMode: %s\n", 
+                        LOG("\nCalling PLAT_DS_SetDeepSleep with nwStandbyMode: %s\n", 
                                nwStandbyMode_gs?("Enabled"):("Disabled"));
-                        status = PLAT_DS_SetNetworkStandby(deep_sleep_wakeup_timer,&userWakeup, nwStandbyMode_gs);
-#else
-                        status = PLAT_DS_SetDeepSleep(deep_sleep_wakeup_timer,&userWakeup);
 #endif
+                        LOG("Device entered to Deep sleep Mode.. \r\n");
+                        status = PLAT_DS_SetDeepSleep(deep_sleep_wakeup_timer,&userWakeup, nwStandbyMode_gs);
+
                         LOG("Device resumed from Deep sleep Mode. \r\n");
 
                         if (userWakeup)
@@ -302,11 +301,7 @@ static void _eventHandler(const char *owner, IARM_EventId_t eventId, void *data,
                         else {
                             LOG("Resumed without user action. Not sending KED_DEEPSLEEP_WAKEUP. \r\n");
                         }
-#else
-                        status = PLAT_DS_SetDeepSleep(deep_sleep_wakeup_timer);
-                        LOG("Device entered to Deep sleep Mode.. \r\n");
 
-#endif
                        if(status != 0)
                        {
                            sleep(5);
@@ -456,16 +451,8 @@ static gboolean deep_sleep_delay_timer_fn(gpointer data)
       LOG("Skiping Stopping of services in Sky Llama Platform\n");
 #endif
     }
-  #ifdef ENABLE_DEEPSLEEP_WAKEUP_EVT
     bool userWakeup = 0;
-   #ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
-    status = PLAT_DS_SetNetworkStandby(deep_sleep_wakeup_timer,&userWakeup, nwStandbyMode_gs);
-   #else
-    status = PLAT_DS_SetDeepSleep(deep_sleep_wakeup_timer,&userWakeup);
-   #endif /*ENABLE_LLAMA_PLATCO_SKY_XIONE End*/ 
-  #else
-    status = PLAT_DS_SetDeepSleep(deep_sleep_wakeup_timer);
-  #endif
+    status = PLAT_DS_SetDeepSleep(deep_sleep_wakeup_timer,&userWakeup, nwStandbyMode_gs);
     if(status != 0)
     {
        LOG("deep_sleep_delay_timer_fn: Failed to enter deepsleep state \n");

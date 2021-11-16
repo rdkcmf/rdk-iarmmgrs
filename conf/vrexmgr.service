@@ -18,7 +18,7 @@
 ##########################################################################
 [Unit]
 Description=IARM Mgr Daemon VREX MGR
-After=lighttpd.service iarmbusd.service pwrmgr.service
+After=lighttpd.service iarmbusd.service pwrmgr.service pwrmgr2.service
 
 [Service]
 ExecStart=/usr/bin/vrexMgrMain

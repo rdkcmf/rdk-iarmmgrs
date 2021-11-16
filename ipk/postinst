@@ -24,9 +24,9 @@ if [ -n "$D" ]; then
 fi
 
 if type systemctl >/dev/null 2>/dev/null; then
-	systemctl $OPTS enable diskmgr.service dsmgr.service irmgr.service pwrmgr.service sysmgr.service tr69bus.service deviceupdatemgr.service mfrmgr.service vrexmgr.service
+	systemctl $OPTS enable diskmgr.service irmgr.service pwrmgrSwitch.service pwrmgr.service pwrmgr2.service dsmgr.service sysmgr.service tr69bus.service deviceupdatemgr.service mfrmgr.service vrexmgr.service
 
 	if [ -z "$D" -a "enable" = "enable" ]; then
-		systemctl restart diskmgr.service dsmgr.service irmgr.service pwrmgr.service sysmgr.service tr69bus.service deviceupdatemgr.service mfrmgr.service vrexmgr.service
+		systemctl restart diskmgr.service irmgr.service pwrmgrSwitch.service pwrmgr.service pwrmgr2.service dsmgr.service sysmgr.service tr69bus.service deviceupdatemgr.service mfrmgr.service vrexmgr.service
 	fi
 fi

@@ -17,13 +17,11 @@
 # limitations under the License.
 ##########################################################################
 [Unit]
-Description=IARM Mgr Daemon Power MGR
+Description=IARM Mgr Daemon Power MGR (pwrmgr)
 After=lighttpd.service iarmbusd.service irmgr.service dsmgr.service
+ConditionPathExists=/tmp/pwrMgr1
 
 [Service]
 Type=notify
 ExecStart=/usr/bin/pwrMgrMain
 Restart=always
-
-[Install]
-WantedBy=multi-user.target

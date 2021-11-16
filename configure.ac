@@ -67,6 +67,24 @@ m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])],
 [AM_DEFAULT_VERBOSITY=1
 AC_SUBST(AM_DEFAULT_VERBOSITY)])
 
+PWRMGR2_FLAG=" "
+USE_PWR_MGR2=""
+AC_ARG_ENABLE([pwrmgr2],
+        AS_HELP_STRING([--enable-pwrmgr2],[This will enable power manager 2 compilation instead of legacy power manager. ]),
+        [
+          case "${enableval}" in
+           yes) USE_PWR_MGR2=true
+                PWRMGR2_FLAG="-DUSE_PWR_MGR2"
+                m4_syscmd([test -d pwrmgr2])
+                m4_if(m4_sysval,[0],[AC_CONFIG_FILES([pwrmgr2/Makefile])]);;
+            no) USE_PWR_MGR2=false echo[latest power mgr code is disabled & Legacy code is used];;
+             *) AC_MSG_ERROR([bad value ${enableval} for --enable-pwrmgr2 ]) ;;
+          esac
+        ],
+        [ echo "Used Legacy power Code base n disabled pwrmgr2 "])
+
+AM_CONDITIONAL(USE_PWR_MGR2, test "x$USE_PWR_MGR2" = xtrue)
+
 # Checks for programs.
 AC_PROG_CC
 AC_PROG_CXX
@@ -89,6 +107,7 @@ AC_SUBST(SUBDIR_MFR)
 AC_SUBST(LDFLAGS_CLIENT)
 AC_SUBST(CFLAGS_CLIENT)
 AC_SUBST(AM_LDFLAGS)
+AC_SUBST(PWRMGR2_FLAG)
 
 AC_CONFIG_FILES([Makefile
                  dsmgr/Makefile

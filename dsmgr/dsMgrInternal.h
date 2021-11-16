@@ -45,6 +45,7 @@
 #ifndef _IARM_DSMGR_INTERNAL_
 #define _IARM_DSMGR_INTERNAL_
 #include "libIARM.h"
+#include "libIBusDaemon.h"
 
 #define IARM_BUS_DSMGR_NAME		"DSMgr"
 #include <string.h>
@@ -96,6 +97,9 @@ printf(FORMAT, __VA_ARGS__);\
 #define INT_WARNING(FORMAT, ...)      printf(FORMAT, ##__VA_ARGS__)
 
 #endif
+
+
+extern IARM_Bus_Daemon_SysMode_t isEAS; // Default is Normal Mode
 
 IARM_Result_t DSMgr_Start();
 IARM_Result_t DSMgr_Loop();

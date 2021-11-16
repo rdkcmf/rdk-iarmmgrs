@@ -20,14 +20,16 @@
 
 RM          := rm -rf
 CFLAGS      := -g -fPIC -D_REENTRANT -Wall
-OBJS        := $(patsubst %.c,%.o,$(wildcard *.c))
+OBJS        := $(patsubst %.c,%.o,$(wildcard *.c)) dsMgrProductTraitsHandler.o dsMgrHelper.o
+CPPLAGS      := -g -fPIC -D_REENTRANT -Wall
 EXECUTABLE  =   dsMgrMain
-INCLUDE     =   -I.\
+INCLUDE     =   -I. \
                 -I$(IARM_PATH)/core/   \
                 -I$(IARM_PATH)/core/include \
 				-I$(IARM_MGRS)/generic/sysmgr/include \
                 -I$(DS_PATH)/rpc/include \
 				-I$(DS_PATH)/hal/include \
+		        -I$(DS_PATH)/ds/include \
 				-I$(DS_PATH)/hal/src \
 				-I$(GLIB_HEADER_PATH)/ \
 				-I$(GLIB_HEADER_PATH)/glib/ \
@@ -55,6 +57,7 @@ CFLAGS += $(_INIT_RESN_SETTINGS)
 
 LDFLAGS +=-Wl,-rpath,$(SDK_FSROOT)/usr/local/lib
 LDFLAGS += -L$(SDK_FSROOT)/usr/local/lib -lIARMBus
+LDFLAGS += -L$(INSTALL)/lib -ldshalcli -lds       
 
 INTEL_SHLIBS=   \
                                 -lismd_core \
@@ -98,13 +101,13 @@ ifeq ($(COMCAST_PLATFORM),RNG150)
 LDFLAGS+=-L$(COMBINED_ROOT)/workRNG150/svn/sdk/mfrlib/bin/release -lPaceMfrApi
 endif 
 endif
-	LDFLAGS+=-L$(DS_PATH)/install/lib -ldshalsrv -ldshal
+	LDFLAGS+=-L$(DS_PATH)/install/lib -ldshalsrv -ldshal -lds -ldshalcli
 else ifeq ($(PLATFORM_SOC),entropic)
 	LDFLAGS+=-L$(COMBINED_ROOT)/fsroot/usr/local/lib -L${_TMTGTBUILDROOT}/comps/generated/lib/armgnu_linux_el_cortex-a9
-	LDFLAGS+=-L$(DS_PATH)/install/lib -ldshalsrv -ldshal -ltmplatVersion -llnxtmvssUsr -llnxnotifyqUsr -llnxUKAL -llnxplatUsr -llnxcssUsr -llnxscsUsr -llnxpvrUsr -llnxtmvssHDMIRxUDrv -lrt -lIARMBus
+	LDFLAGS+=-L$(DS_PATH)/install/lib -ldshalsrv -ldshal -lds -ldshalcli -ltmplatVersion -llnxtmvssUsr -llnxnotifyqUsr -llnxUKAL -llnxplatUsr -llnxcssUsr -llnxscsUsr -llnxpvrUsr -llnxtmvssHDMIRxUDrv -lrt -lIARMBus
 else
 	LDFLAGS+=-L$(SDK_FSROOT)/lib -L$(SDK_FSROOT)/usr/lib -L$(SDK_FSROOT)/usr/local/lib/  -L$(CROSS_TOOLCHAIN)/lib
-	LDFLAGS+=-L$(DS_PATH)/install/lib -ldshalsrv -ldshal -lnspr4 -losal -lrt -lMAF_StackAdapter -lMAF_InputHandler -lMAF_ConfigMgmt -lMAF_DbusAdapter -lpace_spi_drv -lparker_fpd_library $(INTEL_SHLIBS) -lPaceRemod
+	LDFLAGS+=-L$(DS_PATH)/install/lib -ldshalsrv -ldshal -lds -ldshalcli -lnspr4 -losal -lrt -lMAF_StackAdapter -lMAF_InputHandler -lMAF_ConfigMgmt -lMAF_DbusAdapter -lpace_spi_drv -lparker_fpd_library $(INTEL_SHLIBS) -lPaceRemod
 endif
 
 all:clean executable
@@ -116,6 +119,11 @@ executable: $(OBJS)
 %.o: %.c
 	@echo "Building $@ ...."
 	$(CXX) -c $<  $(CFLAGS) -o $@
+
+%.o: %.cpp
+	@echo "Building $@ ...."
+	$(CXX) -c $<  $(CFLAGS) -o $@
+
 clean:
 	@echo "Cleaning the directory..."
 	@$(RM) $(OBJS) $(EXECUTABLE)

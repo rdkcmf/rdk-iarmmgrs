@@ -16,8 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##########################################################################
-#
-
 
 SUBDIRS =
 DIST_SUBDIRS =
@@ -25,20 +23,38 @@ DIST_SUBDIRS =
 IARM        = $(includedir)/rdk/iarmbus
 IARM_MGR    = $(includedir)/rdk/iarmmgrs-hal
 
-INCLUDES = -I . \
+INCLUDES = -I=$(IARM) -I=$(IARM_MGR) \
+           -I ./include \
+           -I=$(includedir)/directfb \
+           -I ../ir/include \
+           -I ../vrexmgr/include \
            -I ../sysmgr/include \
-           -I=$(IARM) -I=$(IARM_MGR) \
-           -I=$(includedir)/rdk/ds-rpc \
-           -I=$(includedir)/rdk/ds-rpc \
-           -I=$(includedir)/rdk/ds-hal
+           -I=${includedir}/ccec/drivers \
+           -I=$(includedir)/rdk/ds \
+           -I=$(includedir)/rdk/ds-hal \
+           -I=/usr/include/wdmp-c \
            -I=/usr/include
 
 CC = $(CXX)
 
 AM_CFLAGS = $(INCLUDES) -fPIC -D_REENTRANT -Wall -DGP_VERSION_11
-bin_PROGRAMS = dsMgrMain
 
-dsMgrMain_SOURCES = dsMgr.c  dsMgrInternal.h dsMgrMain.c
-dsMgrMain_SOURCES += dsMgrPwrEventListener.c dsMgrPwrEventListener.h dsMgrProductTraitsHandler.cpp dsMgrProductTraitsHandler.h dsMgrHelper.cpp
-dsMgrMain_LDADD = -L=/usr/lib -lds -ldshalsrv -lds-hal -ldshalcli  -lrfcapi
+bin_PROGRAMS = pwrMgrMain2
+
+pwrMgrMain2_SOURCES = iarmcec.c \
+                      coldFactoryReset.c \
+                      customerReset.c \
+                      factoryReset.c \
+                      personalityReset.c \
+                      userFactoryReset.c \
+                      pwrMgr.c \
+                      pwrMgrMain.c \
+                      reset.c \
+                      sleepTimer.c \
+                      wareHouseReset.c \
+                      wareHouseClear.c \
+                      pwrlogger.h \
+                      pwrMgrInternal.h \
+                      pwrMgrHelper.cpp
+pwrMgrMain2_LDADD = -lds -ldshalcli -liarmmgrs-power-hal -lrfcapi
 

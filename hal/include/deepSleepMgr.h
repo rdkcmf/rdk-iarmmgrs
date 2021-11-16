@@ -61,6 +61,7 @@ extern "C"
 #define IARM_BUS_DEEPSLEEPMGR_NAME 				"DEEPSLEEPMgr"  /*!< Power manager IARM bus name */
 
 typedef enum _DeepSleepStatus_t {
+    DeepSleepStatus_Failed = -1,        /*!< Deepsleep operation  failed*/
     DeepSleepStatus_NotStarted = 0,        /*!< Deepsleep operation not started*/
     DeepSleepStatus_InProgress,        /*!< Deepsleep operation in progress */
     DeepSleepStatus_Completed,        /*!< Deepsleep operation completed */
@@ -88,15 +89,7 @@ int PLAT_DS_INIT(void);
  *
  * @return  Return the status of the operation
  */
-#ifdef ENABLE_DEEPSLEEP_WAKEUP_EVT
-    #ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
-        int PLAT_DS_SetNetworkStandby(uint32_t deep_sleep_timeout, bool *isGPIOWakeup, bool networkStandby);
-    #else
-        int PLAT_DS_SetDeepSleep(uint32_t deep_sleep_timeout, bool *isGPIOWakeup);
-    #endif /*End of ENABLE_DEEPSLEEP_WAKEUP_EVT*/
-#else
-int PLAT_DS_SetDeepSleep(uint32_t deep_sleep_timeout);
-#endif
+int PLAT_DS_SetDeepSleep(uint32_t deep_sleep_timeout, bool *isGPIOWakeup, bool networkStandby);
 
 /**
  * @brief This function wakes up the CPE from deep sleep mode.
