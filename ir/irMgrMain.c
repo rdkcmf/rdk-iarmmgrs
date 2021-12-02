@@ -49,6 +49,7 @@ void logCallback(const char *buff)
 
 #endif
 #include "irMgr.h"
+#include "cap.h"
 #ifdef ENABLE_SD_NOTIFY
 #include <systemd/sd-daemon.h>
 #endif
@@ -82,6 +83,33 @@ int get_irmgr_RFC_config()
     return is_enabled;
 }
 
+static bool drop_root()
+{
+    bool ret = false,retval = false;
+    cap_user appcaps = {{0, 0, 0, '\0', 0, 0, 0, '\0'}};
+    ret = isBlacklisted();
+    if(ret)
+    {
+         LOG("NonRoot feature is disabled\n");
+    }
+    else
+    {
+        LOG("NonRoot feature is enabled\n");
+         appcaps.caps = NULL;
+         appcaps.user_name = NULL;
+         if(init_capability() != NULL) {
+            if(drop_root_caps(&appcaps) != -1) {
+               if(update_process_caps(&appcaps) != -1) {
+                   read_capability(&appcaps);
+                   retval = true;
+               }
+            }
+         }
+    }
+    return retval;
+}
+
+
 int main(int argc, char *argv[])
 {
     const char* debugConfigFile = NULL;
@@ -110,6 +138,12 @@ int main(int argc, char *argv[])
     IARM_Bus_RegisterForLog(logCallback);
 
 #endif
+     if(!drop_root())
+    {
+         LOG("drop_root function failed!\n");
+    }
+
+
     int inputEnabled = get_irmgr_RFC_config();
     if(0 == inputEnabled)
     {
