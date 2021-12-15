@@ -2560,6 +2560,12 @@ static IARM_Result_t _SetNetworkStandbyMode(void *arg)
         nwStandbyMode_gs = param->bStandbyMode;
         m_settings.nwStandbyMode = param->bStandbyMode;
         _WriteSettings(m_settingsFile);
+
+        IARM_Bus_PWRMgr_EventData_t _eventData;
+        _eventData.data.bNetworkStandbyMode = m_settings.nwStandbyMode;
+
+        IARM_Bus_BroadcastEvent( IARM_BUS_PWRMGR_NAME, IARM_BUS_PWRMGR_EVENT_NETWORK_STANDBYMODECHANGED, (void *)&_eventData, sizeof(_eventData));
+
 #else
         LOG ("\nError _SetNetworkStandbyMode not implemented. standbyMode: %s", param->bStandbyMode?("Enabled"):("Disabled"));
 #endif

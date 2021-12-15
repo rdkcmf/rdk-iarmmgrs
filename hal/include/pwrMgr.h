@@ -65,6 +65,7 @@ typedef enum _PWRMgr_EventId_t {
     IARM_BUS_PWRMGR_EVENT_THERMAL_MODECHANGED,        /*!< Event to notify temperature level change */
 #endif // ENABLE_THERMAL_PROTECTION
     IARM_BUS_PWRMGR_EVENT_WAREHOUSEOPS_STATUSCHANGED,        /*!< Event to notify ware house operation status changed */
+    IARM_BUS_PWRMGR_EVENT_NETWORK_STANDBYMODECHANGED,        /*!< Event to notify that the network standby mode changed.*/
     IARM_BUS_PWRMGR_EVENT_MAX,                     /*!< Max event id from this module */
 } IARM_Bus_PWRMgr_EventId_t;
 
@@ -135,6 +136,7 @@ typedef struct _PWRMgr_EventData_t {
 		float curTemperature;
         } therm;
 	#endif
+        bool bNetworkStandbyMode;
         int32_t reset_sequence_progress;
      } data;
 }IARM_Bus_PWRMgr_EventData_t;
