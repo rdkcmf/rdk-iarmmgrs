@@ -1289,7 +1289,7 @@ static void* _AsyncPowerWareHouseOperation(void *pWareHouseOpnArg)
         LOG("_AsyncPowerWareHouseOperation pWareHouseOpnArg is NULL\r\n");
         pthread_mutex_unlock(&wareHouseOpsMutex);
         asyncPowerWarehouseOpsThreadId = NULL;
-	pthread_exit(NULL);
+        pthread_exit(NULL);
     }
 
     IARM_BUS_PWRMgr_WareHouseOpn_EventData_t wareHouseOpnEventData;
@@ -1299,24 +1299,25 @@ static void* _AsyncPowerWareHouseOperation(void *pWareHouseOpnArg)
 
     if (IARM_BUS_PWRMGR_WAREHOUSE_RESET == (*pWareHouseOpn)) {
         processWHResetNoReboot();
-	wareHouseOpnEventData.status = IARM_BUS_PWRMGR_WAREHOUSE_COMPLETED;
+        wareHouseOpnEventData.status = IARM_BUS_PWRMGR_WAREHOUSE_COMPLETED;
     }
     else if (IARM_BUS_PWRMGR_WAREHOUSE_CLEAR == (*pWareHouseOpn)) {
         processWHClearNoReboot();
-	wareHouseOpnEventData.status = IARM_BUS_PWRMGR_WAREHOUSE_COMPLETED;
+        wareHouseOpnEventData.status = IARM_BUS_PWRMGR_WAREHOUSE_COMPLETED;
     }
     else {
         /* goto sleep */
         LOG("_AsyncPowerWareHouseOperation unexpected pWareHouseOpnArg %d\r\n", (*pWareHouseOpn));
-	wareHouseOpnEventData.status = IARM_BUS_PWRMGR_WAREHOUSE_FAILED;
+        wareHouseOpnEventData.status = IARM_BUS_PWRMGR_WAREHOUSE_FAILED;
     }
-    free (pWareHouseOpn); pWareHouseOpn=NULL;
 
     LOG("_AsyncPowerWareHouseOperation broadcasted IARM_BUS_PWRMGR_EVENT_WAREHOUSEOPS_STATUSCHANGED event\r\n");
     IARM_Bus_BroadcastEvent(IARM_BUS_PWRMGR_NAME, IARM_BUS_PWRMGR_EVENT_WAREHOUSEOPS_STATUSCHANGED, (void *)&wareHouseOpnEventData, sizeof(wareHouseOpnEventData));
 
+    free (pWareHouseOpn); pWareHouseOpn=NULL;
     pthread_mutex_unlock(&wareHouseOpsMutex);
     asyncPowerWarehouseOpsThreadId = NULL;
+    pthread_exit(NULL);
 }
 
 static int _SetPowerWareHouseOperation(IARM_Bus_PWRMgr_WareHouseOps_t eWareHouseOpn)
@@ -1326,13 +1327,23 @@ static int _SetPowerWareHouseOperation(IARM_Bus_PWRMgr_WareHouseOps_t eWareHouse
 
     if (asyncPowerWarehouseOpsThreadId == NULL)
     {
-        int *pWareHouseOpn = (int*) malloc (sizeof(int));
+        IARM_Bus_PWRMgr_WareHouseOps_t *pWareHouseOpn = (IARM_Bus_PWRMgr_WareHouseOps_t *) malloc (sizeof(IARM_Bus_PWRMgr_WareHouseOps_t));
         *pWareHouseOpn = eWareHouseOpn;
         LOG("_SetPowerWareHouseOperation eWareHouseOpn is %d pWareHouseOpn is %d\r\n", eWareHouseOpn, *pWareHouseOpn);
-        pthread_create(&asyncPowerWarehouseOpsThreadId, NULL, _AsyncPowerWareHouseOperation, (void*)pWareHouseOpn);
+        int err = pthread_create(&asyncPowerWarehouseOpsThreadId, NULL, _AsyncPowerWareHouseOperation, (void*)pWareHouseOpn);
+        if(err != 0){
+            LOG("_AsyncPowerWareHouseOperation thread create failed \r\n");
+        }else {
+            err = pthread_detach(asyncPowerWarehouseOpsThreadId);
+            if(err != 0){
+                LOG("_AsyncPowerWareHouseOperation thread detach failed \r\n");
+            }
+            else
+                LOG("_AsyncPowerWareHouseOperation thread detach success \r\n");
+        }
     }
     else {
-	retCode = IARM_RESULT_INVALID_STATE;
+        retCode = IARM_RESULT_INVALID_STATE;
         LOG("_SetPowerWareHouseOperation already in progress %d. Pls call it once existing reset finished.\r\n", retCode);
     }
     return retCode;
