@@ -228,7 +228,8 @@ static IARM_Result_t _HandleReboot(void *arg);
 static IARM_Result_t _SetWakeupSrcConfig(void *arg);
 #endif //ENABLE_SET_WAKEUP_SRC_CONFIG
 static IARM_Result_t _handleDeepsleepTimeoutWakeup(void *arg);
-static void*  handleDeepsleepTimeoutWakeupThread (void * arg);
+static void  handleDeepsleepTimeoutWakeup (void * arg);
+static void*  deepsleepTimeoutWakeupThread (void * arg);
 
 static int _InitSettings(const char *settingsFile);
 static int _WriteSettings(const char *settingsFile);
@@ -2023,6 +2024,7 @@ static void *_AsyncPowerTransition(void *)
         }
         pthread_mutex_unlock(&powerStateMutex);
     }
+    pthread_exit(NULL);
 }
 
 static void _SetPowerStateAsync(IARM_Bus_PWRMgr_PowerState_t curState, IARM_Bus_PWRMgr_PowerState_t newState)
@@ -2033,7 +2035,16 @@ static void _SetPowerStateAsync(IARM_Bus_PWRMgr_PowerState_t curState, IARM_Bus_
 
     if (asyncPowerThreadId == NULL)
     {
-        pthread_create(&asyncPowerThreadId, NULL, _AsyncPowerTransition, NULL);
+        int err = pthread_create(&asyncPowerThreadId, NULL, _AsyncPowerTransition, NULL);
+        if(err != 0){
+            LOG("_AsyncPowerTransition thread create failed \r\n");
+        }else {
+            err = pthread_detach(asyncPowerThreadId);
+            if(err != 0){
+                LOG("_AsyncPowerTransition thread detach failed \r\n");
+            }
+        }
+
     }
    
     /* Awake the thread to check status */
@@ -2307,8 +2318,7 @@ static IARM_Result_t _SetDeepSleepTimeOut(void *arg)
     }
     return IARM_RESULT_IPCCORE_FAIL; 
 }
-
-static void* handleDeepsleepTimeoutWakeupThread (void * arg)
+static void handleDeepsleepTimeoutWakeup (void * arg)
 {
     __TIMESTAMP();LOG("Entering %s \r\n", __FUNCTION__);
     IARM_BUS_PWRMgr_DeepSleepTimeout_EventData_t param;
@@ -2328,12 +2338,19 @@ static void* handleDeepsleepTimeoutWakeupThread (void * arg)
 #endif /*End of _DISABLE_SCHD_REBOOT_AT_DEEPSLEEP*/
 }
 
+static void* deepsleepTimeoutWakeupThread (void * arg)
+{
+    __TIMESTAMP();LOG("Entering %s \r\n", __FUNCTION__);
+    handleDeepsleepTimeoutWakeup(arg);
+    pthread_exit(NULL);
+}
+
 static IARM_Result_t  _handleDeepsleepTimeoutWakeup (void *arg)
 {
     IARM_Result_t retCode = IARM_RESULT_SUCCESS;
     //Deepsleep wakeup will take time and a low freq event, hence using detach thread approch here.
     pthread_t asyncDeepsleepTimeoutThreadId = 0;
-    int err = pthread_create(&asyncDeepsleepTimeoutThreadId, NULL, handleDeepsleepTimeoutWakeupThread, NULL);
+    int err = pthread_create(&asyncDeepsleepTimeoutThreadId, NULL, deepsleepTimeoutWakeupThread, NULL);
     if(err != 0){
         __TIMESTAMP();LOG("handleDeepsleepTimeoutWakeup thread create failed \r\n");
     }else {
@@ -2357,7 +2374,7 @@ static gboolean deep_sleep_wakeup_fn(gpointer data)
     if(timeout >= deep_sleep_wakeup_timeout_sec)
     {
         //Calling synchronously here
-        handleDeepsleepTimeoutWakeupThread (NULL);
+        handleDeepsleepTimeoutWakeup (NULL);
         return FALSE;
     }
 return TRUE;
