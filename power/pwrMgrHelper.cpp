@@ -116,13 +116,14 @@ static int get_last_station(const std::string &input)
     return ret;
 }
 
-static void set_ftue_status_from_ra_store()
+static bool set_ftue_status_from_ra_store()
 {
     const char *resident_app_local_storage = "/opt/persistent/rdkservices/ResidentApp/wpe/local-storage/http_platco.thor.local_50050.localstorage";
     sqlite3 *db;
     const char *query = R"(select * from ItemTable where key = "ftue";)";
     sqlite3_stmt *prepared_statement = nullptr;
     static const int FTUE_DONE_STATION_NUMBER = 14;
+    bool retStatus = false;
 
     LOG("%s: start.\n", __func__);
     int ret = sqlite3_open(resident_app_local_storage, &db);
@@ -160,6 +161,7 @@ static void set_ftue_status_from_ra_store()
                         std::ofstream flag(ftue_flag_file);
                         if (false == flag.is_open())
                             LOG("%s: Error creating file %s\n", __func__, ftue_flag_file);
+			retStatus = true;
                     }
                     ret = SQLITE_DONE; //To break out of do-while loop.
                 }
@@ -177,6 +179,7 @@ static void set_ftue_status_from_ra_store()
     sqlite3_finalize(prepared_statement);
 clean_up_db:
     sqlite3_close(db);
+    return retStatus;
     LOG("%s: exit.\n", __func__);
 }
 #endif // FTUE_CHECK_ENABLED
@@ -193,11 +196,12 @@ bool isTVOperatingInFactory()
             1. It's safer to assume that we're in factory right now.
             2. Launch a deferred job to check FTUE status and touch the flag if complete.
         */
-        static const auto CALLBACK_DELAY_SECONDS = 180;
+        static const auto CALLBACK_DELAY_SECONDS = 3;
         auto deferred_callback = [](gpointer data)
         {
-            set_ftue_status_from_ra_store();
-            return G_SOURCE_REMOVE;
+            bool retFtueStatus  = set_ftue_status_from_ra_store();
+            LOG("%s: %s\n", __func__, (true == retFtueStatus ? "true" : "false"));
+            return (retFtueStatus)?G_SOURCE_REMOVE:G_SOURCE_CONTINUE;
         };
         g_timeout_add_seconds(CALLBACK_DELAY_SECONDS, deferred_callback, nullptr);
     }
