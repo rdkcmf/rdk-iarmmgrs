@@ -30,6 +30,7 @@ void powerEventHandler(const char *owner, IARM_EventId_t eventId, void *data, si
 	{
 	     return;
 	}
+	/*
         switch(eventId)
         { 
                 case IARM_BUS_PWRMGR_EVENT_MODECHANGED:
@@ -65,7 +66,8 @@ void powerEventHandler(const char *owner, IARM_EventId_t eventId, void *data, si
 
                 default:
                         break;
-        }
+        }*/
+	return;
 }
 
 
