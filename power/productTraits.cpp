@@ -274,7 +274,6 @@ namespace pwrMgrProductTraits
     {
         bool ret = true;
         sync_display_ports_with_power_state(new_state);
-        sync_power_led_with_power_state(new_state);
         ret = set_bootloader_pattern((IARM_BUS_PWRMGR_POWERSTATE_ON == new_state ? mfrBL_PATTERN_NORMAL : mfrBL_PATTERN_SILENT_LED_ON));
         return ret;
     }
