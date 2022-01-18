@@ -242,6 +242,8 @@ static IARM_Result_t mfrWifiCredentials_(void *arg)
                 return IARM_RESULT_INVALID_PARAM;
             }
 
+            data.iSecurityMode = param->wifiCredentials.iSecurityMode;
+
             LOG("WIFI_SetCredentials ssid = %s \r\n", param->wifiCredentials.cSSID);
             err = WIFI_SetCredentials(&(data));
             if(WIFI_API_RESULT_SUCCESS  == err)
@@ -253,6 +255,7 @@ static IARM_Result_t mfrWifiCredentials_(void *arg)
     }
     else
     {
+	data.iSecurityMode = -1;
         err = WIFI_GetCredentials(&(data));
 
         if(WIFI_API_RESULT_SUCCESS  == err)
@@ -271,8 +274,10 @@ static IARM_Result_t mfrWifiCredentials_(void *arg)
                 return IARM_RESULT_INVALID_PARAM;
             }
 
+	    param->wifiCredentials.iSecurityMode = data.iSecurityMode;
+
             retCode=IARM_RESULT_SUCCESS;
-            LOG("WIFI_GetCredentials ssid = %s \r\n", data.cSSID);
+            LOG("WIFI_GetCredentials ssid = %s SecurityMode = %d \r\n", data.cSSID, data.iSecurityMode);
         }
 	else
 	    LOG("Calling WIFI_GetCredentials returned err %d\r\n", err);

@@ -64,6 +64,7 @@ typedef struct
 {
     char cSSID[WIFI_MAX_SSID_LEN+1];
     char cPassword[WIFI_MAX_PASSWORD_LEN+1];
+    int  iSecurityMode;
 } WIFI_DATA;
 
 #ifdef __cplusplus
