@@ -64,7 +64,6 @@ static void GetSerialNumber(void);
 
 static IARM_Result_t _SetHDCPProfile(void *arg);
 static IARM_Result_t _GetHDCPProfile(void *arg);
-static IARM_Result_t _RunScript(void *arg);
 
 /* Functions added to get and set Key Code Logging status*/
 static int keyLogStatus = 1;
@@ -115,7 +114,6 @@ IARM_Result_t SYSMgr_Start()
 		/*HDCP Profile required for RNG 150*/	
 		IARM_Bus_RegisterCall(IARM_BUS_SYSMGR_API_SetHDCPProfile,_SetHDCPProfile);
 		IARM_Bus_RegisterCall(IARM_BUS_SYSMGR_API_GetHDCPProfile,_GetHDCPProfile);
-        IARM_Bus_RegisterCall(IARM_BUS_SYSMGR_API_RunScript, _RunScript);
 
 
         IARM_Bus_RegisterCall(IARM_BUS_SYSMGR_API_GetKeyCodeLoggingPref,_GetKeyCodeLoggingPref);
@@ -573,18 +571,6 @@ static void _sysEventHandler(const char *owner, IARM_EventId_t eventId, void *da
   *
  * @return None 
  */
-static IARM_Result_t _RunScript(void *arg)
-{
-    IARM_Bus_SYSMgr_RunScript_t *param = (IARM_Bus_SYSMgr_RunScript_t *)arg;
-    
-    int ret = system(param->script_path);
-
-    param->return_value = ret;
-
-    __TIMESTAMP(); printf ("Executed - %s and return value is %d\n", param->script_path, param->return_value);
-
-	return IARM_RESULT_SUCCESS;
-}
 
 void GetSerialNumber(void)
 {

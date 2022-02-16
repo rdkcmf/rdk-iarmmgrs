@@ -332,12 +332,6 @@ typedef struct _IARM_Bus_SYSMgr_GetSystemStates_Param_t {
   state_property firmware_update_state;
 } IARM_Bus_SYSMgr_GetSystemStates_Param_t;
 
-/*! Parameter for RunScript call*/
-typedef struct _IARM_Bus_SYSMgr_RunScript_t{
-    char script_path [256];   //[in]  Null terminated path name of the script.
-    int  return_value;        //[out] Returns the ret value of system.
-} IARM_Bus_SYSMgr_RunScript_t;
-
 #define IARM_BUS_SYSMGR_Intrusion_MaxLen 1024
 
 /*! Parameter for intrusion detect call*/
@@ -345,8 +339,6 @@ typedef struct _IARM_Bus_SYSMgr_IntrusionData_t{
     char intrusionData[ IARM_BUS_SYSMGR_Intrusion_MaxLen+1 ];   //[in]  intrusion detection data
 } IARM_Bus_SYSMgr_IntrusionData_t;
 
-
-#define IARM_BUS_SYSMGR_API_RunScript "RunScript"
 
 #ifdef __cplusplus
 }
