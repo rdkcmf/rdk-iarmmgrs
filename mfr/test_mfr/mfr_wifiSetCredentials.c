@@ -48,7 +48,7 @@ int main(int argc, char** argv)
 
     if(argc < 3)
     {
-        printf("usage is : ./mfr_wifiSetCredentials <SSID Name> <SSID Password>\n");
+        printf("usage is : ./mfr_wifiSetCredentials <SSID Name> <SSID Password> <Security mode>\n");
         return -1;
     }
 
@@ -62,6 +62,13 @@ int main(int argc, char** argv)
 
     safec_rc = strcpy_s(param.wifiCredentials.cPassword, sizeof(param.wifiCredentials.cPassword), argv[2]);
     SAFEC_ERR_CHECK(safec_rc);
+
+    if(argc < 4){
+        param.wifiCredentials.iSecurityMode=-1;
+    }
+    else{
+        param.wifiCredentials.iSecurityMode=atoi(argv[3]);
+    }
 
     if(IARM_RESULT_SUCCESS == IARM_Bus_Call(IARM_BUS_MFRLIB_NAME,IARM_BUS_MFRLIB_API_WIFI_Credentials,(void *)&param,sizeof(param)))
     {

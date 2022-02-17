@@ -53,7 +53,7 @@ int main(int argc, char** argv)
     {
         printf("Problem with IARM_Bus_Call \n");
     }
-    printf("\n The value of SSID is %s  \n ",param.wifiCredentials.cSSID);
+    printf("\n The value of SSID is %s  \n The value of Security mode is %d ",param.wifiCredentials.cSSID,param.wifiCredentials.iSecurityMode);
 
     while(getchar()!='x') {
         sleep(1);
