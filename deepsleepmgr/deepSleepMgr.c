@@ -245,6 +245,11 @@ static void _eventHandler(const char *owner, IARM_EventId_t eventId, void *data,
 #else
 			   LOG("Skipping Stopping service while entering DEEPSLEEP.\n");
 #endif
+#ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
+			   LOG("Update the Deepsleep marker to splunk.\n");
+			   system("sh /lib/rdk/alertSystem.sh deepSleepMgrMain SYST_INFO_devicetoDS");
+#endif
+
 #ifndef ENABLE_LLAMA_PLATCO
                            LOG("Unmounting SDcard partition\r\n");
                            system("sh /lib/rdk/disk_checkV2 deepsleep ON");
