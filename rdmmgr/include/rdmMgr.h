@@ -42,12 +42,45 @@ extern "C"
 
 #define IARM_BUS_RDMMGR_NAME 					    "RDMMgr" /*!< IARM BUS  name for rdm manager */
 
+#define RDM_PKG_NAME								"pkg_name"
+#define RDM_PKG_VERSION								"pkg_version"
+#define RDM_PKG_INST_PATH							"pkg_inst_path"
+#define RDM_PKG_INST_STATUS							"pkg_inst_status"
+#define RDM_PKG_NAME_MAX_SIZE							128
+#define RDM_PKG_VERSION_MAX_SIZE						8
+#define RDM_PKG_INST_PATH_MAX_SIZE						256
 
 /*! Published Events from rdm manager  */
 typedef enum _RDMMgr_EventId_t {
-	IARM_BUS_RDMMGR_EVENT_APPDOWNLOADS_CHANGED,		/*!< RDM application download status chnaged*/ 
+	IARM_BUS_RDMMGR_EVENT_APPDOWNLOADS_CHANGED = 0,		/*!< RDM application download status chnaged*/
+	IARM_BUS_RDMMGR_EVENT_APP_INSTALLATION_STATUS,    /*!< RDM application installation status */
 	IARM_BUS_RDMMGR_EVENT_MAX				/*!< Max Event Id */
 } IARM_Bus_RDMMgr_EventId_t;
+
+
+typedef enum _RDMMgr_Status_t {
+	RDM_PKG_INSTALL_COMPLETE = 0,
+	RDM_PKG_INSTALL_ERROR, // 1
+	RDM_PKG_DOWNLOAD_COMPLETE, // 2
+	RDM_PKG_DOWNLOAD_ERROR, // 3
+	RDM_PKG_EXTRACT_COMPLETE, // 4
+	RDM_PKG_EXTRACT_ERROR, // 5
+	RDM_PKG_VALIDATE_COMPLETE, // 6
+	RDM_PKG_VALIDATE_ERROR, // 7
+	RDM_PKG_POSTINSTALL_COMPLETE, // 8
+	RDM_PKG_POSTINSTALL_ERROR, // 9
+	RDM_PKG_INVALID_INPUT // 10
+} IARM_RDMMgr_Status_t;
+
+
+typedef struct _RDMMgr_EventData_t {
+	struct _pkg_info {
+	    char pkg_name[RDM_PKG_NAME_MAX_SIZE];
+	    char pkg_version[RDM_PKG_VERSION_MAX_SIZE];
+	    char pkg_inst_path[RDM_PKG_INST_PATH_MAX_SIZE];
+	    IARM_RDMMgr_Status_t pkg_inst_status;
+	} rdm_pkg_info;
+} IARM_Bus_RDMMgr_EventData_t;
 
 
 #ifdef __cplusplus
