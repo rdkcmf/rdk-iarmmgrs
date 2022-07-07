@@ -185,9 +185,10 @@ typedef enum _SYSMgr_SystemState_t {
   IARM_BUS_SYSMGR_SYSSTATE_LP_CONNECTION_RESET, //40
   IARM_BUS_SYSMGR_SYSSTATE_RWS_CONNECTION_RESET, //41
   IARM_BUS_SYSMGR_SYSSTATE_QAM_READY, //42
-  IARM_BUS_SYSMGR_SYSSTATE_FIRMWARE_UPDATE_STATE //43, Added as part of RDK-19978, As the IARM 
+  IARM_BUS_SYSMGR_SYSSTATE_FIRMWARE_UPDATE_STATE, //43, Added as part of RDK-19978, As the IARM 
                                                  // requirement for RDK-19978 and IARM_BUS_SYSMGR_SYSSTATE_FIRMWARE_DWNLD 
                                                  // are having some mismatches, introduced the new event
+  IARM_BUS_SYSMGR_SYSSTATE_USB_DETECTED //44
 }IARM_Bus_SYSMgr_SystemState_t;
 
 
@@ -261,6 +262,12 @@ typedef struct _IARM_BUS_SYSMgr_EventData_t{
 			char device[128];
 			char dir[256];
 		} usbMountData;
+		struct _USB_DETECT {
+			int inserted;
+			char vendor[128];
+			char productid[256];
+			char devicename[256];
+		} usbData;
 
 	} data;
 }IARM_Bus_SYSMgr_EventData_t;
