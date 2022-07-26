@@ -61,9 +61,7 @@ typedef enum _PWRMgr_EventId_t {
     IARM_BUS_PWRMGR_EVENT_DEEPSLEEP_TIMEOUT, /*!< Event to notify deepsleep timeout */
     IARM_BUS_PWRMGR_EVENT_RESET_SEQUENCE,        /*!< Event to notify progress of reset key sequence*/
     IARM_BUS_PWRMGR_EVENT_REBOOTING,             /*!< Event to notify that the device is about to reboot.*/
-#ifdef ENABLE_THERMAL_PROTECTION
     IARM_BUS_PWRMGR_EVENT_THERMAL_MODECHANGED,        /*!< Event to notify temperature level change */
-#endif // ENABLE_THERMAL_PROTECTION
     IARM_BUS_PWRMGR_EVENT_WAREHOUSEOPS_STATUSCHANGED,        /*!< Event to notify ware house operation status changed */
     IARM_BUS_PWRMGR_EVENT_NETWORK_STANDBYMODECHANGED,        /*!< Event to notify that the network standby mode changed.*/
     IARM_BUS_PWRMGR_EVENT_MAX,                     /*!< Max event id from this module */
@@ -140,7 +138,6 @@ typedef struct _PWRMgr_EventData_t {
         int32_t reset_sequence_progress;
      } data;
 }IARM_Bus_PWRMgr_EventData_t;
-
 
 /**
  *  @brief Structure which holds the Deep sleep timeout value.
