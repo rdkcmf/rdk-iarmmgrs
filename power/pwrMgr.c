@@ -1601,7 +1601,6 @@ static int _InitSettings(const char *settingsFile)
                                #ifdef PLATCO_BOOTTO_STANDBY
                                    if(stat("/tmp/pwrmgr_restarted",&buf) != 0)
                                    {
-                                       setPowerStateBeforeReboot (pSettings->powerState);
                                        pSettings->powerState = IARM_BUS_PWRMGR_POWERSTATE_STANDBY;
                                        __TIMESTAMP();LOG("Setting default powerstate to standby\n\r");
                                    }
@@ -1635,7 +1634,6 @@ static int _InitSettings(const char *settingsFile)
                                #endif
                                #ifdef PLATCO_BOOTTO_STANDBY
                                if(stat("/tmp/pwrmgr_restarted",&buf) != 0) {
-                                   setPowerStateBeforeReboot (pSettings->powerState);
                                    pSettings->powerState = IARM_BUS_PWRMGR_POWERSTATE_STANDBY;
                                }
                                #endif
@@ -1748,6 +1746,8 @@ static int _InitSettings(const char *settingsFile)
                 }
         #endif 
     
+        setPowerStateBeforeReboot (g_last_known_power_state);
+        __TIMESTAMP();LOG("Setting PowerStateBeforeReboot %d \r\n", g_last_known_power_state);
 
         /* Sync with platform if it is supported */
         {
