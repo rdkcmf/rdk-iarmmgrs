@@ -480,9 +480,9 @@ int checkResetSequence(int keyType, int keyCode)
 #ifdef ENABLE_FACTORY_RESET_VIA_FP_POWER_BUTTON
                     if((gKeyReleasedTime - gKeyPressedTime) >= POWER_KEY_HOLD_TIME_FOR_FACTORY_RESET)
                     {
-                        __TIMESTAMP();LOG("\n Reset: Factory reset through long-pressing power key\n");
+                        __TIMESTAMP();LOG("\n Reset: User Factory reset through long-pressing power key\n");
                         fflush(stdout);
-                        processFactoryReset();
+                        processUserFactoryReset();
                         ret = 1;
                         return ret;
                     }
