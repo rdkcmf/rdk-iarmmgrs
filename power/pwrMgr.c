@@ -1920,7 +1920,7 @@ int _SetAVPortsPowerState(IARM_Bus_PWRMgr_PowerState_t powerState)
                 {
                     bool doEnable = get_video_port_standby_setting(videoPorts.at(i).getName().c_str());
                     LOG("Video port %s will be %s in standby mode.\n", videoPorts.at(i).getName().c_str(), (doEnable? "enabled" : "disabled")); 
-                    if(false == doEnable) 
+                   if(false == doEnable) 
                         videoPorts.at(i).disable();
                 }
             }
@@ -1970,23 +1970,28 @@ int _SetAVPortsPowerState(IARM_Bus_PWRMgr_PowerState_t powerState)
                 }
             }
 
-            for (size_t i = 0; i < videoPorts.size(); i++)
+           for (size_t i = 0; i < videoPorts.size(); i++)
             {
                 device::VideoOutputPort &vPort = videoPorts.at(i);
                 if (vPort.isDisplayConnected())
                 {
                     device::AudioOutputPort &aPort = videoPorts.at(i).getAudioOutputPort();
-                    LOG("Setting Audio Mode-(STBY- ACTIVE) by persistence to [%s]\r\n",aPort.getStereoMode(true).getName().c_str());
-                    if(isEASInProgress == IARM_BUS_SYS_MODE_EAS)
-                    {
-                        /* Force Stereo in EAS mode. */
-                        LOG("Force Stereo in EAS mode \r\n");
-                        aPort.setStereoMode(device::AudioStereoMode::kStereo,false);
+                    LOG("Setting Audio Mode-(STBY- ACTIVE) Port name: %s  by persistence to [%s]\r\n",aPort.getName().c_str(),aPort.getStereoMode(true).getName().c_str());
+                    try {
+                        if(isEASInProgress == IARM_BUS_SYS_MODE_EAS)
+                        {
+                            /* Force Stereo in EAS mode. */
+                            LOG("Force Stereo in EAS mode \r\n");
+                            aPort.setStereoMode(device::AudioStereoMode::kStereo,false);
+                        }
+                        else
+                        {
+                            aPort.setStereoMode(aPort.getStereoMode(true).getName(),false);
+                        } 
                     }
-                    else
+                    catch(...)
                     {
-                        aPort.setStereoMode(aPort.getStereoMode(true).getName(),false);
-                    } 
+                    }
                 }
             } 
 
