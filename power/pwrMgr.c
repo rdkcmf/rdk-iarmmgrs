@@ -621,14 +621,14 @@ static gboolean heartbeatMsg(gpointer data)
             {
                 LOG("Going to reboot after %lld\n", uptime);
                 sleep(10);
-                system("sh /rebootNow.sh -s PwrMgr -o 'Standby Maintenance reboot'");
+                system("sh /rebootNow.sh -s PwrMgr -r 'Standby Maintenance reboot' -o 'Standby Maintenance reboot'");
             }
 
             if (UPTIME_ABOVE_FORCE_REBOOT(uptime))
             {
                 LOG("Going to reboot after %lld\n", uptime);
                 sleep(10);
-                system("sh /rebootNow.sh -s PwrMgr -o 'Forced Maintenance reboot'");
+                system("sh /rebootNow.sh -s PwrMgr -r 'Forced Maintenance reboot' -o 'Forced Maintenance reboot'");
             }
         }
     }
