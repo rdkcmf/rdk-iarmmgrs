@@ -184,13 +184,19 @@ IARM_Result_t deviceUpdateStart()
 
 	INT_LOG("Entering [%s] - [%s] - disabling io redirect buf\n", __FUNCTION__, IARM_BUS_DEVICE_UPDATE_NAME);
 	setvbuf(stdout, NULL, _IOLBF, 0);
-	pthread_mutex_init(&mapMutex, NULL);
-
+	int ret = pthread_mutex_init(&mapMutex, NULL);
+        if(ret != 0) {
+        INT_LOG(" pthread_mutex_init Error case: %d\n", __LINE__);
+        status = IARM_RESULT_INVALID_STATE;  
+        }
 	if (!initialized)
 	{
 		IARM_Result_t rc;
 
-		pthread_mutex_init(&tMutexLock, NULL);
+		int retval = pthread_mutex_init(&tMutexLock, NULL);
+                if(retval != 0) {
+                INT_LOG(" pthread_mutex_init Error case: %d\n", __LINE__);
+                }
 		pthread_mutex_lock(&tMutexLock);
 		rc = IARM_Bus_Init(IARM_BUS_DEVICE_UPDATE_NAME);
 		INT_LOG("dumMgr:I-ARM IARM_Bus_Init Mgr: %d\n", rc);
@@ -265,8 +271,8 @@ bool loadConfig()
 
 		while (!feof(fp) && confData.length() < 65535)
 		{
-			memset(buf, 0, sizeof(buf));
-                        if (0 >= fread(buf, 1, sizeof(buf) - 1, fp))   //cID:86017 - checked return
+                        memset(buf,'\0', sizeof(buf));                 //CID:136517 - checked null argument
+     			if (0 >= fread(buf, 1, sizeof(buf) - 1, fp))   //cID:86017 - checked return
                         {
 			    INT_LOG("dumMgr fread failed  \n");
                         }
