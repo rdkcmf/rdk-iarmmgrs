@@ -80,7 +80,7 @@ extern bool isComponentPortPresent();
 
 extern bool dsGetHDMIDDCLineStatus(void);
 static int _SetVideoPortResolution();
-static int  _SetResolution(int* handle,dsVideoPortType_t PortType);
+static int  _SetResolution(intptr_t* handle,dsVideoPortType_t PortType);
 static void _EventHandler(const char *owner, IARM_EventId_t eventId, void *data, size_t len);
 static IARM_Result_t _SysModeChange(void *arg);
 static void dumpHdmiEdidInfo(dsDisplayEDID_t* pedidData);
@@ -110,7 +110,7 @@ static guint hotplug_event_src = 0;
 static gboolean dumpEdidOnChecksumDiff(gpointer data);
 static bool IsIgnoreEdid_gs = false;
 
-static int getVideoPortHandle(_dsVideoPortType_t port)
+static intptr_t getVideoPortHandle(_dsVideoPortType_t port)
 {
     /* Get the HDMI Video Port Parameter */
     dsVideoPortGetHandleParam_t vidPortParam;
@@ -431,8 +431,8 @@ static void _EventHandler(const char *owner, IARM_EventId_t eventId, void *data,
 /* Set Video resolution on HDMI Hot Plug or Tune Ready events  */
 static int _SetVideoPortResolution()
 {
-	int _hdmihandle = 0;
-	int _comphandle = 0;
+	intptr_t _hdmihandle = 0;
+	intptr_t _comphandle = 0;
 	bool connected=false;
 	int iCount = 0;
 	
@@ -486,7 +486,7 @@ static int _SetVideoPortResolution()
 			{
 			    __TIMESTAMP();printf("%s: NULL Handle for component\r\n",__FUNCTION__);
 
-                            int _compositehandle = getVideoPortHandle(dsVIDEOPORT_TYPE_BB);
+                            intptr_t _compositehandle = getVideoPortHandle(dsVIDEOPORT_TYPE_BB);
 
                             if (NULL != _compositehandle)
                             {
@@ -496,7 +496,7 @@ static int _SetVideoPortResolution()
                             else
                             {
                                  __TIMESTAMP();printf("%s: NULL Handle for Composite \r\n",__FUNCTION__);
-                                 int _rfhandle = getVideoPortHandle(dsVIDEOPORT_TYPE_RF);
+                                 intptr_t _rfhandle = getVideoPortHandle(dsVIDEOPORT_TYPE_RF);
                                  if (NULL != _rfhandle)
                                  {
                                      __TIMESTAMP();printf("Setting RF Resolution.......... \r\n");
@@ -530,12 +530,12 @@ static int _SetVideoPortResolution()
  * * @param Connection Status 
  ** @return void pointer (NULL)
  */
-static int  _SetResolution(int* handle,dsVideoPortType_t PortType)
+static int  _SetResolution(intptr_t* handle,dsVideoPortType_t PortType)
 {
 	errno_t rc = -1;
-	int _displayHandle = 0;
+	intptr_t _displayHandle = 0;
 	int numResolutions = 0,i=0;
-	int _handle = *handle;
+	intptr_t _handle = *handle;
 	bool IsValidResolution = false;
 	dsVideoPortSetResolutionParam_t Setparam;
 	dsVideoPortGetResolutionParam_t Getparam;
@@ -900,7 +900,7 @@ static void _setAudioMode()
         }
         else if (getHandle.type == dsAUDIOPORT_TYPE_HDMI) {
             //check if it is connected
-            int vHandle = 0;
+            intptr_t vHandle = 0;
             int autoMode = 0;
             bool connected = 0;
             bool IsSurround = false;
@@ -994,7 +994,7 @@ static void dumpHdmiEdidInfo(dsDisplayEDID_t* pedidData)
 
 static gboolean dumpEdidOnChecksumDiff(gpointer data) {
          __TIMESTAMP();printf("dumpEdidOnChecksumDiff HDMI-EDID Dump>>>>>>>>>>>>>>\r\n");
-        int _displayHandle = 0;
+        intptr_t _displayHandle = 0;
         dsGetDisplay(dsVIDEOPORT_TYPE_HDMI, 0, &_displayHandle);
         if (_displayHandle) {
                 int length = 0;
