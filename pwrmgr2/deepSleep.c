@@ -82,6 +82,8 @@ static GMainLoop *mainloop = NULL;
 static guint dsleep_delay_event_src = 0;
 static DeepSleepStatus_t IsDeviceInDeepSleep = DeepSleepStatus_NotStarted;
 static gboolean isLxcRestart = 0;
+extern void  _handleDeepsleepTimeoutWakeup ();
+
 
 void IARM_Bus_PWRMGR_RegisterDeepSleepAPIs()
 {
@@ -108,6 +110,7 @@ void PwrMgrDeepSleepTimeout()
 
 static void SetPwrMgrDeepSleepMode(void *data)
 {
+    LOG("[%s:%d] Entering...\n",__FUNCTION__,__LINE__);
     IARM_Bus_PWRMgr_EventData_t *param = (IARM_Bus_PWRMgr_EventData_t *)data;
 
     if(IsDeviceInDeepSleep != DeepSleepStatus_InProgress)
@@ -178,9 +181,10 @@ static void SetPwrMgrDeepSleepMode(void *data)
 #endif
                 int status = -1;
                 int retryCount = 0;
+                bool userWakeup = 0;
                 while(retryCount< 5) {
                     LOG("Device entering Deep sleep Mode.. \r\n");
-                    bool userWakeup = 0;
+                    userWakeup = 0;
 #ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
                     nwStandbyMode_gs = param->data.state.nwStandbyMode;
                     LOG("\nCalling PLAT_DS_SetDeepSleep with nwStandbyMode: %s\n",
@@ -189,25 +193,6 @@ static void SetPwrMgrDeepSleepMode(void *data)
                     LOG("Device entered to Deep sleep Mode.. \r\n");
                     status = PLAT_DS_SetDeepSleep(deep_sleep_wakeup_timer,&userWakeup, nwStandbyMode_gs);
                     LOG("Device resumed from Deep sleep Mode. \r\n");
-
-                    if (userWakeup) {
-                        /* Always send KED_DEEPSLEEP_WAKEUP when user action wakes the device from deep sleep. Previously this was sent
-                            if we woke from a GPIO event, however there are cases where IR events aren't always passed when exiting
-                            deep sleep resulting in the device not fully resuming. To resolve this we will ensure the WAKE event
-                            is always sent here */
-                        LOG("Resumed due to user action. Sending KED_DEEPSLEEP_WAKEUP. \r\n");
-                        IARM_Bus_IRMgr_EventData_t eventData;
-                        eventData.data.irkey.keyType = KET_KEYDOWN;
-                        eventData.data.irkey.keyCode = KED_DEEPSLEEP_WAKEUP;
-                        eventData.data.irkey.isFP = 0;
-                        eventData.data.irkey.keySrc = IARM_BUS_IRMGR_KEYSRC_IR;
-
-                        IARM_Bus_BroadcastEvent(IARM_BUS_IRMGR_NAME, (IARM_EventId_t) IARM_BUS_IRMGR_EVENT_IRKEY, (void *)&eventData, sizeof(eventData));
-                        eventData.data.irkey.keyType = KET_KEYUP;
-                        IARM_Bus_BroadcastEvent(IARM_BUS_IRMGR_NAME, (IARM_EventId_t) IARM_BUS_IRMGR_EVENT_IRKEY, (void *)&eventData, sizeof(eventData));
-                    } else {
-                        LOG("Resumed without user action. Not sending KED_DEEPSLEEP_WAKEUP. \r\n");
-                    }
 
                     if(status != 0) {
                         sleep(5);
@@ -218,12 +203,38 @@ static void SetPwrMgrDeepSleepMode(void *data)
                             break;
                         }
                     } else {
+                        IsDeviceInDeepSleep = DeepSleepStatus_Completed;
                         break;
                     }
                 }
-            }
-            if(IsDeviceInDeepSleep != DeepSleepStatus_Failed) {
-                IsDeviceInDeepSleep = DeepSleepStatus_Completed;
+
+                if (userWakeup) {
+                    /* Always send KED_DEEPSLEEP_WAKEUP when user action wakes the device from deep sleep. Previously this was sent
+                    if we woke from a GPIO event, however there are cases where IR events aren't always passed when exiting
+                    deep sleep resulting in the device not fully resuming. To resolve this we will ensure the WAKE event
+                    is always sent here */
+                    LOG("Resumed due to user action. Sending KED_DEEPSLEEP_WAKEUP. \r\n");
+                    IARM_Bus_IRMgr_EventData_t eventData;
+                    eventData.data.irkey.keyType = KET_KEYDOWN;
+                    eventData.data.irkey.keyCode = KED_DEEPSLEEP_WAKEUP;
+                    eventData.data.irkey.isFP = 0;
+                    eventData.data.irkey.keySrc = IARM_BUS_IRMGR_KEYSRC_IR;
+
+                    IARM_Bus_BroadcastEvent(IARM_BUS_IRMGR_NAME, (IARM_EventId_t) IARM_BUS_IRMGR_EVENT_IRKEY, (void *)&eventData, sizeof(eventData));
+                    eventData.data.irkey.keyType = KET_KEYUP;
+                    IARM_Bus_BroadcastEvent(IARM_BUS_IRMGR_NAME, (IARM_EventId_t) IARM_BUS_IRMGR_EVENT_IRKEY, (void *)&eventData, sizeof(eventData));
+                } else {
+                    LOG("Resumed without user action. Not sending KED_DEEPSLEEP_WAKEUP. \r\n");
+                }
+
+                #ifdef USE_WAKEUP_TIMER_EVT
+                DeepSleep_WakeupReason_t wakeupReason = DEEPSLEEP_WAKEUPREASON_UNKNOWN;
+                int reasonStatus = PLAT_DS_GetLastWakeupReason(&wakeupReason);
+                if (DEEPSLEEP_WAKEUPREASON_TIMER == wakeupReason){
+                    LOG("Calling IARM_BUS_PWRMGR_API_handleDeepsleepTimeoutWakeup on wakeupReason:%d \n", wakeupReason);
+                    _handleDeepsleepTimeoutWakeup();
+                }
+                #endif
             }
         }
     } else {
@@ -234,6 +245,7 @@ static void SetPwrMgrDeepSleepMode(void *data)
         free(data);
         data = NULL;
     }
+    LOG("[%s:%d] Exiting...\r\n",__FUNCTION__,__LINE__);
 }
 
 static void* DeepsleepStateChangeThread(void* arg)
@@ -436,6 +448,16 @@ static gboolean deep_sleep_delay_timer_fn(gpointer data)
     if(status != 0) {
         LOG("deep_sleep_delay_timer_fn: Failed to enter deepsleep state \n");
     }
+
+    #ifdef USE_WAKEUP_TIMER_EVT
+    //Call pwrmgr InvokeDeepsleepTimeout here
+    DeepSleep_WakeupReason_t wakeupReason = DEEPSLEEP_WAKEUPREASON_UNKNOWN;
+    int reasonStatus = PLAT_DS_GetLastWakeupReason(&wakeupReason);
+    if (DEEPSLEEP_WAKEUPREASON_TIMER == wakeupReason){
+        LOG("Calling IARM_BUS_PWRMGR_API_handleDeepsleepTimeoutWakeup on wakeupReason:%d \n", wakeupReason);
+        _handleDeepsleepTimeoutWakeup();
+    }
+    #endif
     return FALSE; // Send False so the handler should not be called again
 }
 

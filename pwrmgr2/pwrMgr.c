@@ -228,8 +228,8 @@ static IARM_Result_t _HandleReboot(void *arg);
 #ifdef ENABLE_SET_WAKEUP_SRC_CONFIG
 static IARM_Result_t _SetWakeupSrcConfig(void *arg);
 #endif //ENABLE_SET_WAKEUP_SRC_CONFIG
-static IARM_Result_t _handleDeepsleepTimeoutWakeup(void *arg);
-static void  handleDeepsleepTimeoutWakeup (void * arg);
+void _handleDeepsleepTimeoutWakeup();
+void  handleDeepsleepTimeoutWakeup ();
 static void*  deepsleepTimeoutWakeupThread (void * arg);
 static int _InitSettings(const char *settingsFile);
 static int _WriteSettings(const char *settingsFile);
@@ -1251,6 +1251,7 @@ static IARM_Result_t _SetPowerState(void *arg)
     {
         LOG("Warning:PowerState is same as requested\r\n");
     }
+    LOG("[%s:%d] Exiting...\n",__FUNCTION__,__LINE__);
     return retCode;
 }
 
@@ -2154,7 +2155,7 @@ static IARM_Result_t _SetDeepSleepTimeOut(void *arg)
     return IARM_RESULT_IPCCORE_FAIL;
 }
 
-static void handleDeepsleepTimeoutWakeup (void * arg)
+void handleDeepsleepTimeoutWakeup ()
 {
     __TIMESTAMP();
     LOG("Entering %s \r\n", __FUNCTION__);
@@ -2177,16 +2178,15 @@ static void handleDeepsleepTimeoutWakeup (void * arg)
     _SetPowerState((void *)&paramSetPwr);
 #endif /*End of _DISABLE_SCHD_REBOOT_AT_DEEPSLEEP*/
 }
-
 static void* deepsleepTimeoutWakeupThread (void * arg)
 {
     __TIMESTAMP();
     LOG("Entering %s \r\n", __FUNCTION__);
-    handleDeepsleepTimeoutWakeup(arg);
+    handleDeepsleepTimeoutWakeup();
     pthread_exit(NULL);
 }
 
-static IARM_Result_t  _handleDeepsleepTimeoutWakeup (void *arg)
+void  _handleDeepsleepTimeoutWakeup ()
 {
     IARM_Result_t retCode = IARM_RESULT_SUCCESS;
     //Deepsleep wakeup will take time and a low freq event, hence using detach thread approch here.
@@ -2202,7 +2202,6 @@ static IARM_Result_t  _handleDeepsleepTimeoutWakeup (void *arg)
             LOG("handleDeepsleepTimeoutWakeup thread detach failed \r\n");
         }
     }
-    return retCode;
 }
 
 /*  Wakeup the box after wakeup timeout for maintenance activities
@@ -2215,10 +2214,13 @@ static gboolean deep_sleep_wakeup_fn(gpointer data)
     __TIMESTAMP();
     LOG("Sec Elapsed Since Deep Sleep : %d \r\n",timeout);
 
-    if(timeout >= deep_sleep_wakeup_timeout_sec)
+    IARM_Result_t rpcRet = IARM_RESULT_SUCCESS;
+    int dsStatus= 0;
+    rpcRet = GetPwrMgrDeepSleepStatus(&dsStatus);
+    if((DeepSleepStatus_InProgress != dsStatus) && (timeout >= deep_sleep_wakeup_timeout_sec))
     {
         //Calling synchronously here
-        handleDeepsleepTimeoutWakeup (NULL);
+        handleDeepsleepTimeoutWakeup();
         return FALSE;
     }
     return TRUE;
