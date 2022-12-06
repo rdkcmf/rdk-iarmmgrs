@@ -9,10 +9,13 @@
 #include "mfrMgr.h"
 #include "dsMgrProductTraitsHandler.h"
 #include "frontPanelIndicator.hpp"
+#include "dsRpc.h"
 
 using namespace dsMgrProductTraits;
 extern bool isTVOperatingInFactory();
 extern int _SetAVPortsPowerState(IARM_Bus_PWRMgr_PowerState_t powerState);
+extern IARM_Result_t _dsSetFPState(void *arg);
+
 /*
     Following profiles are supported:
     * default-stb
@@ -212,7 +215,10 @@ void ux_controller::sync_power_led_with_power_state(IARM_Bus_PWRMgr_PowerState_t
     try
     {
         INT_DEBUG("%s: setting power LED State to %s\n", __func__, (led_state ? "ON" : "FALSE"));
-        device::FrontPanelIndicator::getInstance("Power").setState(led_state);
+        dsFPDStateParam_t param ;
+        param.eIndicator = dsFPD_INDICATOR_POWER;
+        param.state = (led_state ? dsFPD_STATE_ON : dsFPD_STATE_OFF);
+        _dsSetFPState(&param);
     }
     catch (...)
     {
