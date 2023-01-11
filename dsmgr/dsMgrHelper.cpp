@@ -145,7 +145,7 @@ static bool set_ftue_status_from_ra_store()
     bool retStatus = false;
 
     INT_DEBUG("%s: start.\n", __func__);
-    int ret = sqlite3_open(resident_app_local_storage, &db);
+    int ret = sqlite3_open_v2(resident_app_local_storage, &db, SQLITE_OPEN_READWRITE, NULL);
     if (0 != ret)
     {
         INT_DEBUG("%s: Can't open database: %s\n", __func__, sqlite3_errmsg(db));
@@ -154,7 +154,7 @@ static bool set_ftue_status_from_ra_store()
     ret = sqlite3_prepare_v2(db, query, -1, &prepared_statement, nullptr);
     if (SQLITE_OK != ret)
     {
-        INT_DEBUG("%s: Prepare failed.\n", __func__);
+        INT_DEBUG("%s: Prepare failed: %s\n", __func__, sqlite3_errmsg(db));
         goto clean_up_db;
     }
 
