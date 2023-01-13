@@ -2398,8 +2398,15 @@ static gboolean deep_sleep_wakeup_fn(gpointer data)
     uint32_t timeout = (uint32_t) difftime(time(NULL),timeAtDeepSleep);
 
     __TIMESTAMP();LOG("Sec Elapsed Since Deep Sleep : %d \r\n",timeout);
-        
-    if(timeout >= deep_sleep_wakeup_timeout_sec)
+
+    IARM_Result_t rpcRet = IARM_RESULT_SUCCESS;
+    int dsStatus= 0;
+    rpcRet = IARM_Bus_Call(IARM_BUS_DEEPSLEEPMGR_NAME,
+            (char *)"GetDeepSleepStatus",
+            (void *)&dsStatus,
+            sizeof(dsStatus));
+
+    if((DeepSleepStatus_InProgress != dsStatus) && (timeout >= deep_sleep_wakeup_timeout_sec))
     {
         //Calling synchronously here
         handleDeepsleepTimeoutWakeup (NULL);

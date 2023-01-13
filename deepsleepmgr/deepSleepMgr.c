@@ -267,26 +267,44 @@ static void _eventHandler(const char *owner, IARM_EventId_t eventId, void *data,
 #endif
                         int status = -1;
                         int retryCount = 0;
+                        bool userWakeup = 0;
                         while(retryCount< 5)
                         {
-                        LOG("Device entering Deep sleep Mode.. \r\n");
-                        bool userWakeup = 0;
+                            LOG("Device entering Deep sleep Mode.. \r\n");
+                            userWakeup = 0;
 #ifdef ENABLE_LLAMA_PLATCO_SKY_XIONE
-                        nwStandbyMode_gs = param->data.state.nwStandbyMode;
-                        LOG("\nCalling PLAT_DS_SetDeepSleep with nwStandbyMode: %s\n", 
+                            nwStandbyMode_gs = param->data.state.nwStandbyMode;
+                            LOG("\nCalling PLAT_DS_SetDeepSleep with nwStandbyMode: %s\n",
                                nwStandbyMode_gs?("Enabled"):("Disabled"));
 #endif
-                        LOG("Device entered to Deep sleep Mode.. \r\n");
-                        status = PLAT_DS_SetDeepSleep(deep_sleep_wakeup_timer,&userWakeup, nwStandbyMode_gs);
+                            LOG("Device entered to Deep sleep Mode.. \r\n");
+                            status = PLAT_DS_SetDeepSleep(deep_sleep_wakeup_timer,&userWakeup, nwStandbyMode_gs);
 
-                        LOG("Device resumed from Deep sleep Mode. \r\n");
+                            LOG("Device resumed from Deep sleep Mode. \r\n");
 
+                            if(status != 0)
+                            {
+                                sleep(5);
+                                retryCount++;
+                                if(retryCount >= 5)
+                                {
+                                    LOG("ERROR: Device failed to enter into Deep sleep Mode.. \r\n");
+                                    IsDeviceInDeepSleep = DeepSleepStatus_Failed;
+                                    return;
+                                }
+                            }
+                            else
+                            {
+                                IsDeviceInDeepSleep = DeepSleepStatus_Completed;
+                                break;
+                            }
+                        }
                         if (userWakeup)
                         {
-                            /* Always send KED_DEEPSLEEP_WAKEUP when user action wakes the device from deep sleep. Previously this was sent
-                               if we woke from a GPIO event, however there are cases where IR events aren't always passed when exiting 
-                               deep sleep resulting in the device not fully resuming. To resolve this we will ensure the WAKE event
-                               is always sent here */
+                        /* Always send KED_DEEPSLEEP_WAKEUP when user action wakes the device from deep sleep. Previously this was sent
+                           if we woke from a GPIO event, however there are cases where IR events aren't always passed when exiting
+                           deep sleep resulting in the device not fully resuming. To resolve this we will ensure the WAKE event
+                           is always sent here */
                             LOG("Resumed due to user action. Sending KED_DEEPSLEEP_WAKEUP. \r\n");
                             IARM_Bus_IRMgr_EventData_t eventData;
                             eventData.data.irkey.keyType = KET_KEYDOWN;
@@ -302,36 +320,20 @@ static void _eventHandler(const char *owner, IARM_EventId_t eventId, void *data,
                             LOG("Resumed without user action. Not sending KED_DEEPSLEEP_WAKEUP. \r\n");
                         }
 
-                       if(status != 0)
-                       {
-                           sleep(5);
-                           retryCount++;
-                           if(retryCount >= 5)
-                           {
-                              LOG("ERROR: Device failed to enter into Deep sleep Mode.. \r\n");
-                              return;
-                           }
-                       }
-                       else
-                       {
-                          break;
-                       }
-                       }
 #ifdef USE_WAKEUP_TIMER_EVT
-                           DeepSleep_WakeupReason_t wakeupReason = DEEPSLEEP_WAKEUPREASON_UNKNOWN;
-                           int reasonStatus = PLAT_DS_GetLastWakeupReason(&wakeupReason);
-                           if (DEEPSLEEP_WAKEUPREASON_TIMER == wakeupReason){
-                               LOG("Calling IARM_BUS_PWRMGR_API_handleDeepsleepTimeoutWakeup on wakeupReason:%d \n", wakeupReason);
-                               IARM_Bus_Call(IARM_BUS_PWRMGR_NAME, IARM_BUS_PWRMGR_API_handleDeepsleepTimeoutWakeup, NULL, 0);
-                           }
+                        DeepSleep_WakeupReason_t wakeupReason = DEEPSLEEP_WAKEUPREASON_UNKNOWN;
+                        int reasonStatus = PLAT_DS_GetLastWakeupReason(&wakeupReason);
+                        if (DEEPSLEEP_WAKEUPREASON_TIMER == wakeupReason){
+                            LOG("Calling IARM_BUS_PWRMGR_API_handleDeepsleepTimeoutWakeup on wakeupReason:%d \n", wakeupReason);
+                            IARM_Bus_Call(IARM_BUS_PWRMGR_NAME, IARM_BUS_PWRMGR_API_handleDeepsleepTimeoutWakeup, NULL, 0);
+                        }
 #endif //End of USE_WAKEUP_TIMER_EVT
                     }
-                    IsDeviceInDeepSleep = DeepSleepStatus_Completed;
                 }
             }
             break;
-           default: 
-              break;
+        default:
+            break;
         }
     }
 }
